@@ -1,10 +1,12 @@
 import SpriteKit
 
 final class GameScene: SKScene {
+    private static let levelCompleteActionKey = "levelCompleteAdvance"
+
     weak var session: GameSession?
 
-  var onRestart: (() -> Void)?
-  var onLevelComplete: (() -> Void)?
+    var onRestart: (() -> Void)?
+    var onLevelComplete: (() -> Void)?
 
     private var boardNode = SKNode()
     private var conveyorNode = SKNode()
@@ -35,6 +37,7 @@ final class GameScene: SKScene {
 
     /// Clears animation locks and re-syncs after restart or level change.
     func resetAndAttach(session: GameSession) {
+        cancelPendingLevelComplete()
         isSceneAnimating = false
         for node in crateNodes.values {
             node.removeAllActions()
@@ -42,6 +45,23 @@ final class GameScene: SKScene {
         self.session = session
         layoutIfNeeded()
         refreshFromSession(animated: false)
+    }
+
+    private func cancelPendingLevelComplete() {
+        removeAction(forKey: Self.levelCompleteActionKey)
+    }
+
+    private func scheduleLevelComplete(after session: GameSession) {
+        cancelPendingLevelComplete()
+        let guardToken = WinCompletionGuard(session: session)
+        let wait = SKAction.wait(forDuration: 1.0)
+        let advance = SKAction.run { [weak self] in
+            guard let self,
+                  let currentSession = self.session,
+                  guardToken.isStillValid(for: currentSession) else { return }
+            self.onLevelComplete?()
+        }
+        run(SKAction.sequence([wait, advance]), withKey: Self.levelCompleteActionKey)
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -314,8 +334,8 @@ final class GameScene: SKScene {
                     HapticsManager.completion()
                     AudioManager.playWin()
                     self.refreshFromSession(animated: false)
-                    self.run(SKAction.wait(forDuration: 1.0)) {
-                        self.onLevelComplete?()
+                    if let session = self.session {
+                        self.scheduleLevelComplete(after: session)
                     }
                 case .stuck:
                     HapticsManager.failure()

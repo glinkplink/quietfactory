@@ -25,7 +25,7 @@ Build the smallest playable prototype capable of testing this question:
 - 13 hand-authored levels; all verified solvable via test-only `LevelSolver` in CI
 - `onb-3` teaches blocked-path release order (starts `.playing`, blocked crate gives feedback)
 - `hard-1` combines spatial column blocking with interleaved conveyor sequencing
-- Win overlay rests ~1s before auto-advance; stuck overlay copy is location-neutral
+- Win overlay rests ~1s before auto-advance; stale auto-advance cancelled on restart/level change; stuck overlay copy is location-neutral
 - `GameEngineTests` + catalog solvability tests
 - **GitHub iOS CI passing** on the latest implementation tree; PR checks are authoritative for the exact SHA
 - Review-fix pass complete: onboarding blocking tutorial, spatial hard-1, completion pause, overlay copy, test-only solver

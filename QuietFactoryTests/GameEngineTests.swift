@@ -266,4 +266,24 @@ final class GameEngineTests: XCTestCase {
             XCTAssertTrue(LevelSolver.canWin(level: level), "Expected solvable level: \(level.id)")
         }
     }
+
+    func testWinCompletionGuardStillValidForUnchangedSession() {
+        let session = GameSession(level: LevelCatalog.onboarding[0])
+        let token = WinCompletionGuard(session: session)
+        XCTAssertTrue(token.isStillValid(for: session))
+    }
+
+    func testWinCompletionGuardInvalidatesOnRestart() {
+        let session = GameSession(level: LevelCatalog.onboarding[0])
+        let token = WinCompletionGuard(session: session)
+        session.restart()
+        XCTAssertFalse(token.isStillValid(for: session))
+    }
+
+    func testWinCompletionGuardInvalidatesOnDifferentSession() {
+        let first = GameSession(level: LevelCatalog.onboarding[0])
+        let token = WinCompletionGuard(session: first)
+        let second = GameSession(level: LevelCatalog.onboarding[1])
+        XCTAssertFalse(token.isStillValid(for: second))
+    }
 }
