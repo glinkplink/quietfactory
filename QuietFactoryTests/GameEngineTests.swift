@@ -21,29 +21,31 @@ final class GameEngineTests: XCTestCase {
     }
 
     func testPathBlocking() {
-        let board = makeBoard(width: 5, height: 3, crates: [
-            (0, 2, .east, .red),
+        let board = makeBoard(width: 5, height: 4, crates: [
+            (0, 1, .east, .red),
+            (0, 2, .east, .yellow),
             (2, 2, .west, .blue)
         ])
         let state = makeState(board: board)
-        let clearCrate = state.board.crates.values.first { $0.direction == .east }!
-        let blockedCrate = state.board.crates.values.first { $0.direction == .west }!
+        let clearCrate = state.board.crates.values.first { $0.color == .red }!
+        let blockedCrate = state.board.crates.values.first { $0.color == .blue }!
 
         XCTAssertTrue(GameEngine.hasClearExitPath(for: clearCrate, on: board))
         XCTAssertFalse(GameEngine.hasClearExitPath(for: blockedCrate, on: board))
     }
 
     func testLegalAndIllegalReleases() {
-        let board = makeBoard(crates: [
-            (0, 2, .east, .red),
+        let board = makeBoard(width: 5, height: 4, crates: [
+            (0, 1, .east, .red),
+            (0, 2, .east, .yellow),
             (2, 2, .west, .blue)
         ])
         let state = makeState(board: board)
-        let eastCrate = state.board.crates.values.first { $0.direction == .east }!
-        let westCrate = state.board.crates.values.first { $0.direction == .west }!
+        let legalCrate = state.board.crates.values.first { $0.color == .red }!
+        let blockedCrate = state.board.crates.values.first { $0.color == .blue }!
 
-        XCTAssertTrue(GameEngine.isReleaseValid(crateID: eastCrate.id, in: state))
-        XCTAssertFalse(GameEngine.isReleaseValid(crateID: westCrate.id, in: state))
+        XCTAssertTrue(GameEngine.isReleaseValid(crateID: legalCrate.id, in: state))
+        XCTAssertFalse(GameEngine.isReleaseValid(crateID: blockedCrate.id, in: state))
 
         XCTAssertEqual(GameEngine.legalMoves(in: state).count, 1)
     }
@@ -154,7 +156,7 @@ final class GameEngineTests: XCTestCase {
             height: 3,
             crates: [
                 CrateDefinition(x: 0, y: 1, direction: .east, color: .red),
-                CrateDefinition(x: 4, y: 1, direction: .west, color: .blue)
+                CrateDefinition(x: 4, y: 2, direction: .west, color: .blue)
             ],
             matchSize: 3,
             conveyorCapacity: 5,
