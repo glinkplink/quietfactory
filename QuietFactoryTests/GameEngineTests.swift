@@ -64,24 +64,16 @@ final class GameEngineTests: XCTestCase {
     }
 
     func testConveyorCapacityBlocksRelease() {
-        let board = makeBoard(width: 3, height: 3, crates: [
-            (0, 0, .south, .red),
-            (1, 0, .south, .blue)
-        ])
-        var state = makeState(board: board, capacity: 3)
+        let board = makeBoard(width: 3, height: 3, crates: [(0, 0, .south, .red)])
+        var state = makeState(board: board, capacity: 2)
         state.conveyor.slots = [
             ConveyorCrate(id: CrateID(rawValue: 100), color: .yellow),
             ConveyorCrate(id: CrateID(rawValue: 101), color: .purple)
         ]
-        GameEngine.evaluateOutcome(&state)
-        XCTAssertEqual(state.status, .playing)
 
-        let first = state.board.crates.values.sorted { $0.id.rawValue < $1.id.rawValue }[0]
-        state = try! GameEngine.apply(move: Move(crateID: first.id), to: state).state
-
-        let second = state.board.crates.values.first!
-        XCTAssertFalse(GameEngine.isReleaseValid(crateID: second.id, in: state))
-        XCTAssertThrowsError(try GameEngine.apply(move: Move(crateID: second.id), to: state)) { error in
+        let crateID = state.board.crates.values.first!.id
+        XCTAssertFalse(GameEngine.isReleaseValid(crateID: crateID, in: state))
+        XCTAssertThrowsError(try GameEngine.apply(move: Move(crateID: crateID), to: state)) { error in
             XCTAssertEqual(error as? MoveFailure, .conveyorFull)
         }
     }

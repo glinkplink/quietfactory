@@ -19,54 +19,29 @@ Build the smallest playable prototype capable of testing this question:
 
 ## Current status
 
-- Xcode project `QuietFactory.xcodeproj` with shared `QuietFactory` scheme
-- Deterministic `GameCore` module: board, crates, conveyor, matching, win/stuck, restart, replay
-- `GameEngine` pure functions separated from SpriteKit
-- Gray-box `GameScene` with tap-to-release, animations, conveyor display, blocked feedback
-- SwiftUI portrait shell with level strip and restart control
-- Placeholder haptics and system sounds
-- 13 hand-authored prototype levels (3 onboarding, 5 normal, 3 sequencing, 2 difficult)
-- `GameEngineTests` unit suite (12 tests) — all passing in CI
-- **GitHub `iOS CI` passing on PR #1 head SHA `04ee917`** (verified 2026-08-29)
+- Deterministic `GameCore` + `GameEngine` (SpriteKit-independent)
+- Gray-box portrait UI with corrected grid Y-axis (model north = visual up), chevron arrows, tap/release animations
+- `isStuck` covers empty-conveyor deadlocks (e.g. `onb-3`)
+- 13 hand-authored levels; all except `onb-3` verified solvable via `LevelSolver` in CI
+- `GameEngineTests` + catalog solvability tests
+- Draft PR #1 open; awaiting CI on latest review fixes
 
 ## Active scope
 
-Prototype only (as implemented above).
+Prototype gray-box MVP only.
 
 ## Not active yet
 
-- campaign progression UI
-- procedural generation
-- solver
-- daily puzzle
-- stats
-- sharing
-- level select beyond prototype strip
-- final art
-- undo
-- monetization plumbing
-- App Store work
+- campaign, generator, solver production pipeline, daily puzzle, undo, final art, App Store
 
 ## Immediate success criterion
 
-A tester should:
-1. understand the basic rule rapidly;
-2. find individual interactions satisfying;
-3. encounter meaningful sequencing decisions;
-4. voluntarily play another board.
+Human playtest: understand rules quickly, satisfying interactions, meaningful conveyor sequencing, voluntary replay.
 
 ## Current blockers
 
-None for engineering. Next gate is human playtest feedback on the gray-box build.
-
-## Open questions
-
-1. Exact conveyor capacity tuning beyond default 5
-2. Match rule variants beyond default groups-of-3 consecutive
-3. Telegraphing conveyor consequences in UI
-4. Hard stuck vs recoverable failure with undo (undo not in MVP)
-5. Optimal color count and board size for one-thumb portrait play
+None engineering-side pending CI on review-fix push.
 
 ## Next checkpoint
 
-Human playtest of gray-box loop on device/simulator; tune animation timing and level teachability if needed.
+Green `iOS CI` on PR head after P1 review fixes; then device playtest.

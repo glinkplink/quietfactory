@@ -119,14 +119,14 @@ enum LevelCatalog {
                 name: "Gatekeeper",
                 width: 6,
                 height: 2,
-                crates: [
-                    CrateDefinition(x: 0, y: 1, direction: .east, color: .blue),
-                    CrateDefinition(x: 1, y: 1, direction: .east, color: .blue),
-                    CrateDefinition(x: 2, y: 1, direction: .east, color: .blue),
-                    CrateDefinition(x: 3, y: 1, direction: .west, color: .green),
-                    CrateDefinition(x: 4, y: 1, direction: .west, color: .green),
-                    CrateDefinition(x: 5, y: 1, direction: .west, color: .green)
-                ],
+                crates: southLaneRow(
+                    colors: [
+                        (0, .blue), (1, .blue), (2, .blue),
+                        (3, .green), (4, .green), (5, .green)
+                    ],
+                    width: 6,
+                    row: 1
+                ),
                 matchSize: 3,
                 conveyorCapacity: 5,
                 category: .normal
