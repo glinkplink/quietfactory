@@ -4,6 +4,8 @@ import Foundation
 /// Observable game session bridging pure model and UI.
 final class GameSession: ObservableObject {
     @Published private(set) var state: GameState
+    /// Bumped on restart so the scene can force-sync even if an animation flag was left set.
+    @Published private(set) var sceneRevision: Int = 0
     let level: LevelDefinition
 
     init(level: LevelDefinition) {
@@ -17,6 +19,7 @@ final class GameSession: ObservableObject {
         var reset = GameEngine.restart(level: level)
         GameEngine.evaluateOutcome(&reset)
         state = reset
+        sceneRevision += 1
     }
 
     func attemptRelease(crateID: CrateID) -> ReleaseAttemptResult {

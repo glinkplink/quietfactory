@@ -24,7 +24,7 @@ Build the smallest playable prototype capable of testing this question:
 - `isStuck` covers empty-conveyor deadlocks (e.g. `onb-3`)
 - 13 hand-authored levels; all except `onb-3` verified solvable via `LevelSolver` in CI
 - `GameEngineTests` + catalog solvability tests
-- Draft PR #1 open; **iOS CI passing** on head SHA `f27bb30` (2026-08-29)
+- **GitHub `iOS CI` passing** on PR #1 head SHA `d8045bd` (verified 2026-08-29)
 
 ## Active scope
 

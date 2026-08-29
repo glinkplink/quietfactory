@@ -33,6 +33,17 @@ final class GameScene: SKScene {
         }
     }
 
+    /// Clears animation locks and re-syncs after restart or level change.
+    func resetAndAttach(session: GameSession) {
+        isSceneAnimating = false
+        for node in crateNodes.values {
+            node.removeAllActions()
+        }
+        self.session = session
+        layoutIfNeeded()
+        refreshFromSession(animated: false)
+    }
+
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
         layoutIfNeeded()

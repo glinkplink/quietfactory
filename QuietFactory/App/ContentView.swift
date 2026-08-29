@@ -112,8 +112,22 @@ struct GameplayContainer: UIViewRepresentable {
 
     func updateUIView(_ uiView: SKView, context: Context) {
         guard let scene = context.coordinator.scene else { return }
-        if scene.isSceneAnimating { return }
+
+        let sessionID = ObjectIdentifier(session)
+        let needsHardRefresh =
+            context.coordinator.boundSessionID != sessionID
+            || context.coordinator.boundRevision != session.sceneRevision
+
         scene.size = uiView.bounds.size
+
+        if needsHardRefresh {
+            scene.resetAndAttach(session: session)
+            context.coordinator.boundSessionID = sessionID
+            context.coordinator.boundRevision = session.sceneRevision
+            return
+        }
+
+        if scene.isSceneAnimating { return }
         scene.attach(session: session)
     }
 
@@ -124,5 +138,7 @@ struct GameplayContainer: UIViewRepresentable {
     final class Coordinator {
         var scene: GameScene?
         var skView: SKView?
+        var boundSessionID: ObjectIdentifier?
+        var boundRevision: Int = -1
     }
 }
