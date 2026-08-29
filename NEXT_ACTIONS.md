@@ -10,13 +10,17 @@ This file is intentionally tactical. Keep only the next meaningful work here.
 ### 1. Human playtest gray-box MVP (PR #1)
 - Run on iPhone simulator or device from `agent/mvp-nightly`
 - Walk onboarding levels `onb-*` through difficult `hard-*`
+- On `onb-3`: tap blocked crate first, then release blocker, then finish
+- On `hard-1`: confirm both spatial unblocking and conveyor sequencing matter
 - Confirm tap → release → conveyor → match → clear feels understandable and satisfying
+- Confirm win state is visible for ~1 second before auto-advance
 - Note any levels that feel unfair or visually unclear
 
 ### 2. Tune from playtest (if needed)
 - Animation timing for slide/clear
 - Haptic/audio intensity
 - Level layouts that confuse new players
+- Win pause duration if 1s feels too short/long
 
 ---
 

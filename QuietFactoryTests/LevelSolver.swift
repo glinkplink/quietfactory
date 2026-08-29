@@ -1,6 +1,7 @@
 import Foundation
+@testable import QuietFactory
 
-/// Brute-force win search for validating hand-authored levels (no SpriteKit).
+/// Brute-force win search for validating hand-authored levels in tests only.
 enum LevelSolver {
     static func canWin(level: LevelDefinition, maxDepth: Int = 40) -> Bool {
         var initial = level.makeInitialState()

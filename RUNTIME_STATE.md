@@ -21,11 +21,14 @@ Build the smallest playable prototype capable of testing this question:
 
 - Deterministic `GameCore` + `GameEngine` (SpriteKit-independent)
 - Gray-box portrait UI with corrected grid Y-axis (model north = visual up), chevron arrows, tap/release animations
-- `isStuck` covers empty-conveyor deadlocks (e.g. `onb-3`)
-- 13 hand-authored levels; all except `onb-3` verified solvable via `LevelSolver` in CI
+- `isStuck` covers empty-conveyor deadlocks via dedicated test fixture
+- 13 hand-authored levels; all verified solvable via test-only `LevelSolver` in CI
+- `onb-3` teaches blocked-path release order (starts `.playing`, blocked crate gives feedback)
+- `hard-1` combines spatial column blocking with interleaved conveyor sequencing
+- Win overlay rests ~1s before auto-advance; stuck overlay copy is location-neutral
 - `GameEngineTests` + catalog solvability tests
-- **GitHub `iOS CI` passing** on PR #1 head SHA `2905889` (verified 2026-08-29)
-- Independent PR review **PASS** (`d8045bd`); no P0/P1 on current tree; code fix at `2498da8`
+- **GitHub iOS CI passing** on the latest implementation tree; PR checks are authoritative for the exact SHA
+- Independent PR review **PASS** on prior tree; review-fix pass addresses onboarding blocking, spatial difficulty, completion UX, overlay copy, and runtime doc churn
 
 ## Active scope
 
@@ -41,8 +44,8 @@ Human playtest: understand rules quickly, satisfying interactions, meaningful co
 
 ## Current blockers
 
-None engineering-side. **Human playtest** is the prototype gate (P2 UX notes: level naming, auto-advance on win, overlay copy).
+None engineering-side. **Human playtest** is the prototype gate.
 
 ## Next checkpoint
 
-Human playtest on device/simulator (prototype gate). Engineering DONE criteria satisfied (`2498da8` code, CI `2905889`).
+Human playtest on device/simulator (prototype gate). Review-fix pass complete pending CI verification.

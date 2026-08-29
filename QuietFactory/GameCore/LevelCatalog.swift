@@ -53,8 +53,9 @@ enum LevelCatalog {
                 width: 4,
                 height: 3,
                 crates: [
-                    CrateDefinition(x: 1, y: 1, direction: .east, color: .green),
-                    CrateDefinition(x: 2, y: 1, direction: .west, color: .green)
+                    CrateDefinition(x: 2, y: 0, direction: .south, color: .green),
+                    CrateDefinition(x: 2, y: 1, direction: .south, color: .green),
+                    CrateDefinition(x: 3, y: 1, direction: .south, color: .green)
                 ],
                 matchSize: 3,
                 conveyorCapacity: 5,
@@ -214,15 +215,18 @@ enum LevelCatalog {
                 id: "hard-1",
                 name: "Near Stuck",
                 width: 6,
-                height: 2,
-                crates: southLaneRow(
-                    colors: [
-                        (0, .red), (1, .blue), (2, .red),
-                        (3, .blue), (4, .red), (5, .blue)
-                    ],
-                    width: 6,
-                    row: 1
-                ),
+                height: 3,
+                crates: [
+                    CrateDefinition(x: 0, y: 2, direction: .south, color: .red),
+                    CrateDefinition(x: 1, y: 2, direction: .south, color: .purple),
+                    CrateDefinition(x: 2, y: 2, direction: .south, color: .purple),
+                    CrateDefinition(x: 3, y: 2, direction: .south, color: .red),
+                    CrateDefinition(x: 4, y: 2, direction: .south, color: .purple),
+                    CrateDefinition(x: 5, y: 2, direction: .south, color: .red),
+                    CrateDefinition(x: 1, y: 1, direction: .south, color: .orange),
+                    CrateDefinition(x: 2, y: 1, direction: .south, color: .orange),
+                    CrateDefinition(x: 2, y: 0, direction: .south, color: .orange)
+                ],
                 matchSize: 3,
                 conveyorCapacity: 5,
                 category: .difficult

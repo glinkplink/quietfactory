@@ -128,11 +128,53 @@ final class GameEngineTests: XCTestCase {
     }
 
     func testStuckDetectionEmptyConveyorDeadlock() {
-        let level = LevelCatalog.onboarding[2]
+        let level = LevelDefinition(
+            id: "test-deadlock",
+            name: "Deadlock Fixture",
+            width: 4,
+            height: 3,
+            crates: [
+                CrateDefinition(x: 1, y: 1, direction: .east, color: .green),
+                CrateDefinition(x: 2, y: 1, direction: .west, color: .green)
+            ],
+            matchSize: 3,
+            conveyorCapacity: 5,
+            category: .normal
+        )
         var state = level.makeInitialState()
         GameEngine.evaluateOutcome(&state)
         XCTAssertEqual(state.status, .stuck)
         XCTAssertTrue(state.conveyor.slots.isEmpty)
+    }
+
+    func testOnb3StartsPlayingWithBlockedCrate() {
+        let level = LevelCatalog.onboarding[2]
+        var state = level.makeInitialState()
+        GameEngine.evaluateOutcome(&state)
+        XCTAssertEqual(state.status, .playing)
+
+        let blocked = state.board.crates.values.first { $0.position == GridPosition(x: 2, y: 0) }!
+        let blocker = state.board.crates.values.first { $0.position == GridPosition(x: 2, y: 1) }!
+        XCTAssertFalse(GameEngine.hasClearExitPath(for: blocked, on: state.board))
+        XCTAssertTrue(GameEngine.hasClearExitPath(for: blocker, on: state.board))
+    }
+
+    func testOnb3IsSolvable() {
+        let level = LevelCatalog.onboarding[2]
+        XCTAssertTrue(LevelSolver.canWin(level: level))
+    }
+
+    func testHard1HasSpatialDependency() {
+        let level = LevelCatalog.difficult[0]
+        var state = level.makeInitialState()
+        GameEngine.evaluateOutcome(&state)
+
+        let blockedOrange = state.board.crates.values.first { $0.position == GridPosition(x: 1, y: 1) }!
+        XCTAssertFalse(GameEngine.isReleaseValid(crateID: blockedOrange.id, in: state))
+
+        let bottomPurple = state.board.crates.values.first { $0.position == GridPosition(x: 1, y: 2) }!
+        state = try! GameEngine.apply(move: Move(crateID: bottomPurple.id), to: state).state
+        XCTAssertTrue(GameEngine.isReleaseValid(crateID: blockedOrange.id, in: state))
     }
 
     func testRestartResetsState() {
@@ -219,18 +261,9 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(LevelCatalog.all.count, 13)
     }
 
-    func testCatalogLevelsAreSolvableExceptBlockedTutorial() {
-        let winnable = LevelCatalog.all.filter { $0.id != "onb-3" }
-        for level in winnable {
+    func testCatalogLevelsAreSolvable() {
+        for level in LevelCatalog.all {
             XCTAssertTrue(LevelSolver.canWin(level: level), "Expected solvable level: \(level.id)")
         }
-    }
-
-    func testBlockedTutorialIsDeadlock() {
-        let level = LevelCatalog.onboarding[2]
-        XCTAssertFalse(LevelSolver.canWin(level: level))
-        var state = level.makeInitialState()
-        GameEngine.evaluateOutcome(&state)
-        XCTAssertEqual(state.status, .stuck)
     }
 }

@@ -257,12 +257,14 @@ final class GameScene: SKScene {
         label.position = CGPoint(x: size.width / 2, y: size.height - 60)
         overlayNode.addChild(label)
 
-        let hint = SKLabelNode(text: "Tap RESTART below")
-        hint.fontName = "HelveticaNeue"
-        hint.fontSize = 16
-        hint.fontColor = SKColor(white: 0.8, alpha: 1)
-        hint.position = CGPoint(x: size.width / 2, y: size.height - 90)
-        overlayNode.addChild(hint)
+        if status == .stuck {
+            let hint = SKLabelNode(text: "Restart to try again")
+            hint.fontName = "HelveticaNeue"
+            hint.fontSize = 16
+            hint.fontColor = SKColor(white: 0.8, alpha: 1)
+            hint.position = CGPoint(x: size.width / 2, y: size.height - 90)
+            overlayNode.addChild(hint)
+        }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -311,7 +313,10 @@ final class GameScene: SKScene {
                 case .won:
                     HapticsManager.completion()
                     AudioManager.playWin()
-                    self.onLevelComplete?()
+                    self.refreshFromSession(animated: false)
+                    self.run(SKAction.wait(forDuration: 1.0)) {
+                        self.onLevelComplete?()
+                    }
                 case .stuck:
                     HapticsManager.failure()
                     AudioManager.playStuck()
