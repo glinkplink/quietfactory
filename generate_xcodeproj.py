@@ -193,7 +193,7 @@ lines.append(f"		{debug_config_id} /* Debug */ = {{isa = XCBuildConfiguration; b
 lines.append(f"		{release_config_id} /* Release */ = {{isa = XCBuildConfiguration; buildSettings = {{{common_release.format(ios=IOS_DEPLOYMENT)}}}; name = Release; }};")
 
 app_settings_debug = textwrap.dedent(f"""
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -225,6 +225,11 @@ test_settings = textwrap.dedent(f"""
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = {IOS_DEPLOYMENT};
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = {TEST_BUNDLE_ID};
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -233,6 +238,7 @@ test_settings = textwrap.dedent(f"""
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/{PROJECT_NAME}.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/{PROJECT_NAME}";
+				TEST_TARGET_NAME = {PROJECT_NAME};
 """).strip()
 
 lines.append(f"		{app_debug_config_id} /* Debug */ = {{isa = XCBuildConfiguration; buildSettings = {{{app_settings_debug}}}; name = Debug; }};")
