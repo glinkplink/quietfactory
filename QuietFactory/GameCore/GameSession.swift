@@ -8,11 +8,15 @@ final class GameSession: ObservableObject {
 
     init(level: LevelDefinition) {
         self.level = level
-        self.state = level.makeInitialState()
+        var initial = level.makeInitialState()
+        GameEngine.evaluateOutcome(&initial)
+        self.state = initial
     }
 
     func restart() {
-        state = GameEngine.restart(level: level)
+        var reset = GameEngine.restart(level: level)
+        GameEngine.evaluateOutcome(&reset)
+        state = reset
     }
 
     func attemptRelease(crateID: CrateID) -> ReleaseAttemptResult {

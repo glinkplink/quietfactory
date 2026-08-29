@@ -13,7 +13,8 @@ final class GameScene: SKScene {
     private var conveyorSlotNodes: [SKShapeNode] = []
     private var cellSize: CGFloat = 44
     private var boardOrigin: CGPoint = .zero
-    private var isAnimating = false
+    private var boardHeight: Int = 0
+    private(set) var isSceneAnimating = false
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(white: 0.15, alpha: 1)
@@ -27,13 +28,24 @@ final class GameScene: SKScene {
     func attach(session: GameSession) {
         self.session = session
         layoutIfNeeded()
-        refreshFromSession(animated: false)
+        if !isSceneAnimating {
+            refreshFromSession(animated: false)
+        }
+    }
+
+    override func didChangeSize(_ oldSize: CGSize) {
+        super.didChangeSize(oldSize)
+        layoutIfNeeded()
+        if !isSceneAnimating {
+            refreshFromSession(animated: false)
+        }
     }
 
     private func layoutIfNeeded() {
         guard let session else { return }
         let width = session.state.board.width
         let height = session.state.board.height
+        boardHeight = height
         let capacity = session.state.conveyor.capacity
 
         let margin: CGFloat = 16
@@ -93,10 +105,18 @@ final class GameScene: SKScene {
     }
 
     private func gridToScene(x: Int, y: Int) -> CGPoint {
-        CGPoint(
+        let flippedY = boardHeight - 1 - y
+        return CGPoint(
             x: CGFloat(x) * cellSize + cellSize / 2,
-            y: CGFloat(y) * cellSize + cellSize / 2
+            y: CGFloat(flippedY) * cellSize + cellSize / 2
         )
+    }
+
+    private func sceneToGrid(location: CGPoint) -> GridPosition {
+        let gridX = Int(location.x / cellSize)
+        let sceneRow = Int(location.y / cellSize)
+        let gridY = boardHeight - 1 - sceneRow
+        return GridPosition(x: gridX, y: gridY)
     }
 
     func refreshFromSession(animated: Bool) {
@@ -163,14 +183,27 @@ final class GameScene: SKScene {
 
     private func makeArrowNode(direction: MoveDirection, size: CGFloat) -> SKNode {
         let path = CGMutablePath()
-        let v = direction.displayVector
-        path.move(to: CGPoint(x: -size * 0.4, y: -size * 0.3 * v.dy))
-        path.addLine(to: CGPoint(x: size * 0.5 * v.dx, y: size * 0.5 * v.dy))
-        path.addLine(to: CGPoint(x: size * 0.4, y: -size * 0.3 * v.dy))
+        path.move(to: CGPoint(x: 0, y: -size * 0.35))
+        path.addLine(to: CGPoint(x: 0, y: size * 0.45))
+        path.addLine(to: CGPoint(x: -size * 0.35, y: -size * 0.05))
+        path.addLine(to: CGPoint(x: size * 0.35, y: -size * 0.05))
         path.closeSubpath()
+
         let arrow = SKShapeNode(path: path)
         arrow.fillColor = SKColor(white: 0.95, alpha: 1)
         arrow.strokeColor = .clear
+
+        switch direction {
+        case .north:
+            arrow.zRotation = 0
+        case .south:
+            arrow.zRotation = .pi
+        case .east:
+            arrow.zRotation = -.pi / 2
+        case .west:
+            arrow.zRotation = .pi / 2
+        }
+
         return arrow
     }
 
@@ -222,13 +255,10 @@ final class GameScene: SKScene {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !isAnimating, let session, session.state.status == .playing else { return }
+        guard !isSceneAnimating, let session, session.state.status == .playing else { return }
         guard let touch = touches.first else { return }
         let location = touch.location(in: boardNode)
-
-        let gridX = Int(location.x / cellSize)
-        let gridY = Int(location.y / cellSize)
-        let position = GridPosition(x: gridX, y: gridY)
+        let position = sceneToGrid(location: location)
         guard let crateID = session.state.board.crateID(at: position) else { return }
 
         handleRelease(crateID: crateID)
@@ -256,7 +286,7 @@ final class GameScene: SKScene {
         case .released(_, let cleared, let status):
             HapticsManager.release()
             AudioManager.playRelease()
-            isAnimating = true
+            isSceneAnimating = true
             animateRelease(crate: capturedCrate) {
                 AudioManager.playConveyorLanding()
                 HapticsManager.conveyorLanding()
@@ -265,7 +295,7 @@ final class GameScene: SKScene {
                     HapticsManager.match()
                 }
                 self.refreshFromSession(animated: true)
-                self.isAnimating = false
+                self.isSceneAnimating = false
                 switch status {
                 case .won:
                     HapticsManager.completion()

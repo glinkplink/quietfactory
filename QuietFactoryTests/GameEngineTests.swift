@@ -82,8 +82,7 @@ final class GameEngineTests: XCTestCase {
         let second = state.board.crates.values.first!
         XCTAssertFalse(GameEngine.isReleaseValid(crateID: second.id, in: state))
         XCTAssertThrowsError(try GameEngine.apply(move: Move(crateID: second.id), to: state)) { error in
-            let failure = error as? MoveFailure
-            XCTAssertTrue(failure == .conveyorFull || failure == .gameNotPlaying)
+            XCTAssertEqual(error as? MoveFailure, .conveyorFull)
         }
     }
 
@@ -136,6 +135,14 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(state.status, .stuck)
     }
 
+    func testStuckDetectionEmptyConveyorDeadlock() {
+        let level = LevelCatalog.onboarding[2]
+        var state = level.makeInitialState()
+        GameEngine.evaluateOutcome(&state)
+        XCTAssertEqual(state.status, .stuck)
+        XCTAssertTrue(state.conveyor.slots.isEmpty)
+    }
+
     func testRestartResetsState() {
         let level = LevelCatalog.onboarding[0]
         var state = level.makeInitialState()
@@ -143,7 +150,8 @@ final class GameEngineTests: XCTestCase {
         state = try! GameEngine.apply(move: Move(crateID: crateID), to: state).state
 
         let restarted = GameEngine.restart(level: level)
-        XCTAssertEqual(restarted.board.crates.count, 1)
+        GameEngine.evaluateOutcome(&restarted)
+        XCTAssertEqual(restarted.board.crates.count, 3)
         XCTAssertTrue(restarted.conveyor.slots.isEmpty)
         XCTAssertEqual(restarted.status, .playing)
     }
@@ -217,5 +225,20 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(LevelCatalog.sequencing.count, 3)
         XCTAssertEqual(LevelCatalog.difficult.count, 2)
         XCTAssertEqual(LevelCatalog.all.count, 13)
+    }
+
+    func testCatalogLevelsAreSolvableExceptBlockedTutorial() {
+        let winnable = LevelCatalog.all.filter { $0.id != "onb-3" }
+        for level in winnable {
+            XCTAssertTrue(LevelSolver.canWin(level: level), "Expected solvable level: \(level.id)")
+        }
+    }
+
+    func testBlockedTutorialIsDeadlock() {
+        let level = LevelCatalog.onboarding[2]
+        XCTAssertFalse(LevelSolver.canWin(level: level))
+        var state = level.makeInitialState()
+        GameEngine.evaluateOutcome(&state)
+        XCTAssertEqual(state.status, .stuck)
     }
 }

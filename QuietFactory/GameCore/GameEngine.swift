@@ -89,11 +89,13 @@ enum GameEngine {
 
     static func isStuck(_ state: GameState) -> Bool {
         guard state.status == .playing else { return false }
-        if state.conveyor.isFull && !hasResolvableMatch(in: state) {
+        if isWin(state) { return false }
+
+        let moves = legalMoves(in: state)
+        if moves.isEmpty && !hasResolvableMatch(in: state) {
             return true
         }
-        let moves = legalMoves(in: state)
-        if moves.isEmpty && !state.conveyor.slots.isEmpty && !hasResolvableMatch(in: state) {
+        if state.conveyor.isFull && !hasResolvableMatch(in: state) {
             return true
         }
         return false

@@ -100,7 +100,7 @@ struct GameplayContainer: UIViewRepresentable {
         let view = SKView()
         view.ignoresSiblingOrder = true
         view.preferredFramesPerSecond = 60
-        let scene = GameScene(size: UIScreen.main.bounds.size)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
         scene.scaleMode = .resizeFill
         scene.attach(session: session)
         scene.onLevelComplete = onAdvance
@@ -112,8 +112,9 @@ struct GameplayContainer: UIViewRepresentable {
 
     func updateUIView(_ uiView: SKView, context: Context) {
         guard let scene = context.coordinator.scene else { return }
+        if scene.isSceneAnimating { return }
+        scene.size = uiView.bounds.size
         scene.attach(session: session)
-        scene.refreshFromSession(animated: false)
     }
 
     func makeCoordinator() -> Coordinator {
