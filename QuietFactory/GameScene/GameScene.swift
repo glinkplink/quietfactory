@@ -3,6 +3,18 @@ import SpriteKit
 final class GameScene: SKScene {
     private static let levelCompleteActionKey = "levelCompleteAdvance"
 
+    /// Explicit draw order when SKView.ignoresSiblingOrder is true.
+    private enum Layer {
+        static let gridCell: CGFloat = 0
+        static let boardCrate: CGFloat = 10
+        static let crateBody: CGFloat = 0
+        static let crateArrow: CGFloat = 1
+        static let conveyorSlot: CGFloat = 0
+        static let conveyorCrate: CGFloat = 10
+        static let gameplay: CGFloat = 20
+        static let overlay: CGFloat = 100
+    }
+
     weak var session: GameSession?
 
     var onRestart: (() -> Void)?
@@ -20,8 +32,11 @@ final class GameScene: SKScene {
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(white: 0.15, alpha: 1)
-        addChild(boardNode)
+        conveyorNode.zPosition = Layer.gameplay
+        boardNode.zPosition = Layer.gameplay
+        overlayNode.zPosition = Layer.overlay
         addChild(conveyorNode)
+        addChild(boardNode)
         addChild(overlayNode)
         layoutIfNeeded()
         refreshFromSession(animated: false)
@@ -111,6 +126,7 @@ final class GameScene: SKScene {
             slot.fillColor = SKColor(white: 0.25, alpha: 1)
             slot.strokeColor = SKColor(white: 0.45, alpha: 1)
             slot.lineWidth = 2
+            slot.zPosition = Layer.conveyorSlot
             slot.position = CGPoint(
                 x: slotWidth / 2 + CGFloat(index) * (slotWidth + slotSpacing),
                 y: 24
@@ -129,6 +145,7 @@ final class GameScene: SKScene {
                 cell.fillColor = SKColor(white: 0.22, alpha: 1)
                 cell.strokeColor = SKColor(white: 0.35, alpha: 1)
                 cell.lineWidth = 1
+                cell.zPosition = Layer.gridCell
                 cell.position = gridToScene(x: x, y: y)
                 boardNode.addChild(cell)
             }
@@ -168,6 +185,7 @@ final class GameScene: SKScene {
 
         for (id, crate) in board.crates {
             if let node = crateNodes[id] {
+                node.zPosition = Layer.boardCrate
                 let target = gridToScene(x: crate.position.x, y: crate.position.y)
                 if animated {
                     node.run(SKAction.move(to: target, duration: 0.2))
@@ -177,6 +195,7 @@ final class GameScene: SKScene {
                 styleCrateNode(node, crate: crate, isLegal: legalIDs.contains(id))
             } else {
                 let node = makeCrateNode(crate: crate, isLegal: legalIDs.contains(id))
+                node.zPosition = Layer.boardCrate
                 node.position = gridToScene(x: crate.position.x, y: crate.position.y)
                 boardNode.addChild(node)
                 crateNodes[id] = node
@@ -195,9 +214,11 @@ final class GameScene: SKScene {
         body.strokeColor = isLegal ? SKColor.white : SKColor(white: 0.55, alpha: 1)
         body.lineWidth = isLegal ? 3 : 1
         body.name = "body"
+        body.zPosition = Layer.crateBody
         container.addChild(body)
 
         let arrow = makeArrowNode(direction: crate.direction, size: size * 0.35)
+        arrow.zPosition = Layer.crateArrow
         container.addChild(arrow)
 
         return container
@@ -254,6 +275,7 @@ final class GameScene: SKScene {
             node.fillColor = SKColor(red: hue.red, green: hue.green, blue: hue.blue, alpha: 1)
             node.strokeColor = SKColor.white
             node.lineWidth = 1
+            node.zPosition = Layer.conveyorCrate
             node.position = CGPoint(
                 x: slotWidth / 2 + CGFloat(index) * (slotWidth + slotSpacing),
                 y: 24
@@ -274,6 +296,7 @@ final class GameScene: SKScene {
         label.fontName = "HelveticaNeue-Bold"
         label.fontSize = 28
         label.fontColor = status == .won ? SKColor.green : SKColor.orange
+        label.zPosition = Layer.overlay
         label.position = CGPoint(x: size.width / 2, y: size.height - 60)
         overlayNode.addChild(label)
 
@@ -282,6 +305,7 @@ final class GameScene: SKScene {
             hint.fontName = "HelveticaNeue"
             hint.fontSize = 16
             hint.fontColor = SKColor(white: 0.8, alpha: 1)
+            hint.zPosition = Layer.overlay
             hint.position = CGPoint(x: size.width / 2, y: size.height - 90)
             overlayNode.addChild(hint)
         }
