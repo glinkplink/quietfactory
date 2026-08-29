@@ -28,7 +28,7 @@ Build the smallest playable prototype capable of testing this question:
 - Win overlay rests ~1s before auto-advance; stuck overlay copy is location-neutral
 - `GameEngineTests` + catalog solvability tests
 - **GitHub iOS CI passing** on the latest implementation tree; PR checks are authoritative for the exact SHA
-- Independent PR review **PASS** on prior tree; review-fix pass addresses onboarding blocking, spatial difficulty, completion UX, overlay copy, and runtime doc churn
+- Review-fix pass complete: onboarding blocking tutorial, spatial hard-1, completion pause, overlay copy, test-only solver
 
 ## Active scope
 
@@ -48,4 +48,4 @@ None engineering-side. **Human playtest** is the prototype gate.
 
 ## Next checkpoint
 
-Human playtest on device/simulator (prototype gate). Review-fix pass complete pending CI verification.
+Human playtest on device/simulator (prototype gate).
