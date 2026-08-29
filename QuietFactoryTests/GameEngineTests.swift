@@ -149,7 +149,7 @@ final class GameEngineTests: XCTestCase {
         let crateID = state.board.crates.values.first!.id
         state = try! GameEngine.apply(move: Move(crateID: crateID), to: state).state
 
-        let restarted = GameEngine.restart(level: level)
+        var restarted = GameEngine.restart(level: level)
         GameEngine.evaluateOutcome(&restarted)
         XCTAssertEqual(restarted.board.crates.count, 3)
         XCTAssertTrue(restarted.conveyor.slots.isEmpty)
