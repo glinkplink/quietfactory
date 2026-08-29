@@ -8,7 +8,8 @@ This file is intentionally tactical. Keep only the next meaningful work here.
 ## P0 — Do now
 
 ### 1. Human playtest gray-box MVP (PR #1)
-- Run on iPhone simulator or device from `agent/mvp-nightly`
+- **Without a Mac:** download `QuietFactory-Simulator-<sha>` from the green iOS CI run on GitHub Actions, upload the zip to [Appetize.io](https://appetize.io), and play in the browser
+- **With Xcode:** run on iPhone simulator or device from `agent/mvp-nightly`
 - Walk onboarding levels `onb-*` through difficult `hard-*`
 - On `onb-3`: tap blocked crate first, then release blocker, then finish
 - On `hard-1`: confirm both spatial unblocking and conveyor sequencing matter

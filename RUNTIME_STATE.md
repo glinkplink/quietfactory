@@ -28,7 +28,7 @@ Build the smallest playable prototype capable of testing this question:
 - Win overlay rests ~1s before auto-advance; stale auto-advance cancelled on restart/level change; stuck overlay copy is location-neutral
 - `GameEngineTests` + catalog solvability tests
 - **GitHub iOS CI passing** on the latest implementation tree; PR checks are authoritative for the exact SHA
-- Review-fix pass complete: onboarding blocking tutorial, spatial hard-1, completion pause, overlay copy, test-only solver
+- iOS CI publishes a downloadable `QuietFactory-Simulator-<sha>` zip (7-day retention) for Appetize.io browser playtest without a Mac
 
 ## Active scope
 
