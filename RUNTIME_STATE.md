@@ -24,7 +24,8 @@ Build the smallest playable prototype capable of testing this question:
 - `isStuck` covers empty-conveyor deadlocks (e.g. `onb-3`)
 - 13 hand-authored levels; all except `onb-3` verified solvable via `LevelSolver` in CI
 - `GameEngineTests` + catalog solvability tests
-- **GitHub `iOS CI` passing** on PR #1 head SHA `d8045bd` (verified 2026-08-29)
+- **GitHub `iOS CI` passing** on PR #1 head SHA `2498da8` (verified 2026-08-29)
+- Independent PR review **PASS** on `d8045bd`; no P0/P1 open on current tree
 
 ## Active scope
 
@@ -40,7 +41,7 @@ Human playtest: understand rules quickly, satisfying interactions, meaningful co
 
 ## Current blockers
 
-None engineering-side pending CI on review-fix push.
+None engineering-side. **Human playtest** is the prototype gate (P2 UX notes: level naming, auto-advance on win, overlay copy).
 
 ## Next checkpoint
 
