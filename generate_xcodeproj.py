@@ -197,6 +197,7 @@ app_settings_debug = textwrap.dedent(f"""
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = {PROJECT_NAME}/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

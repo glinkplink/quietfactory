@@ -117,16 +117,11 @@ struct GameplayContainer: UIViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onRestart: onRestart)
+        Coordinator()
     }
 
     final class Coordinator {
         var scene: GameScene?
         var skView: SKView?
-        let onRestart: () -> Void
-
-        init(onRestart: () -> Void) {
-            self.onRestart = onRestart
-        }
     }
 }
