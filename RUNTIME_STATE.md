@@ -9,7 +9,7 @@ Do not turn this into product canon. Durable decisions belong in `DECISIONS.md`;
 
 ## Current phase
 
-**Phase 1 — Core prototype (gray-box MVP in progress)**
+**Phase 1 — Core prototype (gray-box MVP on branch `agent/mvp-nightly`)**
 
 ## Current objective
 
@@ -26,8 +26,8 @@ Build the smallest playable prototype capable of testing this question:
 - SwiftUI portrait shell with level strip and restart control
 - Placeholder haptics and system sounds
 - 13 hand-authored prototype levels (3 onboarding, 5 normal, 3 sequencing, 2 difficult)
-- Unit tests covering path blocking, releases, conveyor, matching, win/stuck, restart, replay
-- CI validation pending on first push to `agent/mvp-nightly`
+- `GameEngineTests` unit suite (12 tests) — all passing in CI
+- **GitHub `iOS CI` passing on PR #1 head SHA `04ee917`** (verified 2026-08-29)
 
 ## Active scope
 
@@ -57,7 +57,7 @@ A tester should:
 
 ## Current blockers
 
-None locally. **iOS CI must pass on PR head SHA** before milestone is verified.
+None for engineering. Next gate is human playtest feedback on the gray-box build.
 
 ## Open questions
 
@@ -69,4 +69,4 @@ None locally. **iOS CI must pass on PR head SHA** before milestone is verified.
 
 ## Next checkpoint
 
-Pass GitHub `iOS CI` on PR head; playtest gray-box loop and tune if needed.
+Human playtest of gray-box loop on device/simulator; tune animation timing and level teachability if needed.

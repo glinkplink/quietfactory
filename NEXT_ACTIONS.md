@@ -7,23 +7,22 @@ This file is intentionally tactical. Keep only the next meaningful work here.
 
 ## P0 — Do now
 
-### 1. Verify iOS CI on `agent/mvp-nightly`
-- Confirm `QuietFactory.xcodeproj` builds and tests pass on macOS/Xcode
-- Fix any compile or test failures without weakening CI
+### 1. Human playtest gray-box MVP (PR #1)
+- Run on iPhone simulator or device from `agent/mvp-nightly`
+- Walk onboarding levels `onb-*` through difficult `hard-*`
+- Confirm tap → release → conveyor → match → clear feels understandable and satisfying
+- Note any levels that feel unfair or visually unclear
 
-### 2. Playtest gray-box prototype
-- Run onboarding → difficult levels on device/simulator
-- Tune animation timing and haptic/audio if needed
-- Note sequencing puzzles that feel strategic vs annoying
-
-### 3. Address P0/P1 PR review findings
-- Fix legitimate defects before expanding scope
+### 2. Tune from playtest (if needed)
+- Animation timing for slide/clear
+- Haptic/audio intensity
+- Level layouts that confuse new players
 
 ---
 
 ## P1 — Prototype evaluation
 
-After gray-box is playable and CI-green:
+After gray-box playtesting:
 
 - test without verbal explanation where possible
 - record misunderstandings
@@ -31,7 +30,6 @@ After gray-box is playable and CI-green:
 - note whether players restart voluntarily
 - identify whether conveyor decisions feel strategic or merely annoying
 - tune buffer size and match size
-- tune animation timing
 - remove unnecessary rules
 
 Do not proceed to procedural generation until the loop passes.
