@@ -20,7 +20,7 @@ Build the smallest playable prototype capable of testing this question:
 ## Current status
 
 - Deterministic `GameCore` + `GameEngine` (SpriteKit-independent)
-- Gray-box portrait UI with corrected grid Y-axis (model north = visual up), chevron arrows, tap/release animations
+- Gray-box portrait UI with corrected grid Y-axis (model north = visual up), explicit SpriteKit zPosition layering for crates over grid cells
 - `isStuck` covers empty-conveyor deadlocks via dedicated test fixture
 - 13 hand-authored levels; all verified solvable via test-only `LevelSolver` in CI
 - `onb-3` teaches blocked-path release order (starts `.playing`, blocked crate gives feedback)
