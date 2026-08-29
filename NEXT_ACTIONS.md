@@ -7,62 +7,23 @@ This file is intentionally tactical. Keep only the next meaningful work here.
 
 ## P0 — Do now
 
-### 1. Bootstrap project
-- Create iOS app project at repo-root `QuietFactory.xcodeproj`
-- Add a shared scheme named `QuietFactory`
-- SwiftUI app shell
-- SpriteKit gameplay scene
-- Lock primary orientation to portrait
-- Establish folder/module structure
-- Add basic unit-test target
-- Keep GitHub `iOS CI` in the implementation loop; a SHA is not iOS-verified until that workflow passes
+### 1. Verify iOS CI on `agent/mvp-nightly`
+- Confirm `QuietFactory.xcodeproj` builds and tests pass on macOS/Xcode
+- Fix any compile or test failures without weakening CI
 
-### 2. Implement deterministic core model
-- Grid coordinate model
-- Crate/block model
-- Direction enum
-- Occupancy lookup
-- Release-validity check
-- Move execution
-- Conveyor state
-- Match/clear logic
-- Win-state evaluation
+### 2. Playtest gray-box prototype
+- Run onboarding → difficult levels on device/simulator
+- Tune animation timing and haptic/audio if needed
+- Note sequencing puzzles that feel strategic vs annoying
 
-**Important:** Keep game rules independent of SpriteKit.
-
-### 3. Build gray-box renderer
-Use placeholder geometry only.
-
-Need:
-- grid
-- crate/block
-- arrow/direction indicator
-- conveyor slots
-- blocked feedback
-- movement animation
-- clear animation
-
-### 4. Add tactile feedback
-- valid tap haptic
-- blocked tap haptic
-- conveyor landing haptic
-- match haptic
-- completion haptic
-
-Use placeholder sounds if necessary.
-
-### 5. Hand-author prototype boards
-Create at least:
-- 3 trivial onboarding boards
-- 5 normal boards
-- 3 boards with meaningful conveyor sequencing
-- 2 deliberately difficult / near-stuck boards
+### 3. Address P0/P1 PR review findings
+- Fix legitimate defects before expanding scope
 
 ---
 
 ## P1 — Prototype evaluation
 
-After gray-box is playable:
+After gray-box is playable and CI-green:
 
 - test without verbal explanation where possible
 - record misunderstandings

@@ -9,7 +9,7 @@ Do not turn this into product canon. Durable decisions belong in `DECISIONS.md`;
 
 ## Current phase
 
-**Phase 0 — Product setup / pre-prototype**
+**Phase 1 — Core prototype (gray-box MVP in progress)**
 
 ## Current objective
 
@@ -19,45 +19,31 @@ Build the smallest playable prototype capable of testing this question:
 
 ## Current status
 
-- Product thesis defined
-- V1 constraints defined
-- Technical direction selected: Swift + SpriteKit + SwiftUI
-- Core interaction concept defined
-- macOS GitHub Actions `iOS CI` is part of the implementation loop and is the authoritative Apple/Xcode validation
-- A SHA is not iOS-verified unless `iOS CI` passes for that commit
-- QuietFactory.xcodeproj is not created yet; CI is expected to fail until the project and shared `QuietFactory` scheme exist
-- Prototype not yet built
-- Visual identity not yet finalized
-- No generator/solver implemented
-- No App Store assets created
+- Xcode project `QuietFactory.xcodeproj` with shared `QuietFactory` scheme
+- Deterministic `GameCore` module: board, crates, conveyor, matching, win/stuck, restart, replay
+- `GameEngine` pure functions separated from SpriteKit
+- Gray-box `GameScene` with tap-to-release, animations, conveyor display, blocked feedback
+- SwiftUI portrait shell with level strip and restart control
+- Placeholder haptics and system sounds
+- 13 hand-authored prototype levels (3 onboarding, 5 normal, 3 sequencing, 2 difficult)
+- Unit tests covering path blocking, releases, conveyor, matching, win/stuck, restart, replay
+- CI validation pending on first push to `agent/mvp-nightly`
 
 ## Active scope
 
-Prototype only:
-
-- deterministic board state
-- directional crates/blocks
-- tap-to-release
-- blocked-path feedback
-- conveyor/buffer
-- matching
-- clearing
-- simple win state
-- restart
-- basic haptics
-- basic sound
-- several manually-authored test boards
+Prototype only (as implemented above).
 
 ## Not active yet
 
-- campaign
+- campaign progression UI
 - procedural generation
 - solver
 - daily puzzle
 - stats
 - sharing
-- level select
+- level select beyond prototype strip
 - final art
+- undo
 - monetization plumbing
 - App Store work
 
@@ -71,19 +57,16 @@ A tester should:
 
 ## Current blockers
 
-Xcode project missing. `iOS CI` will fail until bootstrap creates `QuietFactory.xcodeproj` and a shared `QuietFactory` scheme.
+None locally. **iOS CI must pass on PR head SHA** before milestone is verified.
 
 ## Open questions
 
-1. Exact conveyor capacity?
-2. Clear rule: groups of 3, groups by fixed target, or another matching rule?
-3. Do crates leave only in cardinal directions?
-4. How visibly should future conveyor consequences be telegraphed?
-5. Is a hard stuck/fail state desirable, or should undo always make failure recoverable?
-6. How many colors produce the best readability/depth balance?
-7. Should crates have purely directional arrows or path-specific exits?
-8. What board size feels best on one-thumb portrait play?
+1. Exact conveyor capacity tuning beyond default 5
+2. Match rule variants beyond default groups-of-3 consecutive
+3. Telegraphing conveyor consequences in UI
+4. Hard stuck vs recoverable failure with undo (undo not in MVP)
+5. Optimal color count and board size for one-thumb portrait play
 
 ## Next checkpoint
 
-Playable gray-box prototype.
+Pass GitHub `iOS CI` on PR head; playtest gray-box loop and tune if needed.
