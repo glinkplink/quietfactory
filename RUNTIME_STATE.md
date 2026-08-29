@@ -23,6 +23,9 @@ Build the smallest playable prototype capable of testing this question:
 - V1 constraints defined
 - Technical direction selected: Swift + SpriteKit + SwiftUI
 - Core interaction concept defined
+- macOS GitHub Actions `iOS CI` is part of the implementation loop and is the authoritative Apple/Xcode validation
+- A SHA is not iOS-verified unless `iOS CI` passes for that commit
+- QuietFactory.xcodeproj is not created yet; CI is expected to fail until the project and shared `QuietFactory` scheme exist
 - Prototype not yet built
 - Visual identity not yet finalized
 - No generator/solver implemented
@@ -68,7 +71,7 @@ A tester should:
 
 ## Current blockers
 
-None known.
+Xcode project missing. `iOS CI` will fail until bootstrap creates `QuietFactory.xcodeproj` and a shared `QuietFactory` scheme.
 
 ## Open questions
 

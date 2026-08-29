@@ -18,3 +18,6 @@ Rules:
 - After meaningful implementation work, update RUNTIME_STATE.md and NEXT_ACTIONS.md.
 - Update DECISIONS.md only when an actual durable decision changes.
 - Keep AGENTS.md lean; canonical detail belongs in the linked docs.
+- GitHub `iOS CI` is the authoritative Apple/Xcode validation loop.
+- A commit is not iOS-verified unless CI passes for that exact SHA.
+- Inspect and fix CI failures; do not suppress tests or weaken the workflow.

@@ -1,0 +1,167 @@
+name: iOS CI
+
+on:
+  push:
+    branches:
+      - main
+      - agent/**
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: Build and test
+    runs-on: macos-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Print toolchain
+        run: |
+          set -euo pipefail
+          echo "=== macOS ==="
+          sw_vers
+          echo "=== Xcode ==="
+          xcodebuild -version
+          echo "=== Developer directory ==="
+          xcode-select -p
+
+      - name: Verify QuietFactory.xcodeproj exists
+        run: |
+          set -euo pipefail
+          if [[ ! -d QuietFactory.xcodeproj ]]; then
+            echo "::error::QuietFactory.xcodeproj is missing. Create the Xcode project at the repo root; CI does not skip this check."
+            ls -la
+            exit 1
+          fi
+          echo "Found QuietFactory.xcodeproj"
+
+      - name: Verify shared QuietFactory scheme exists
+        run: |
+          set -euo pipefail
+          scheme_file="QuietFactory.xcodeproj/xcshareddata/xcschemes/QuietFactory.xcscheme"
+          if [[ ! -f "${scheme_file}" ]]; then
+            echo "::error::Shared scheme QuietFactory is missing at ${scheme_file}. CI does not skip this check."
+            echo "Project listing:"
+            xcodebuild -list -project QuietFactory.xcodeproj || true
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          proc = subprocess.run(
+              ["xcodebuild", "-list", "-project", "QuietFactory.xcodeproj", "-json"],
+              check=False,
+              capture_output=True,
+              text=True,
+          )
+          text = (proc.stdout or "") + (proc.stderr or "")
+          start = text.find("{")
+          if proc.returncode != 0 or start == -1:
+              print("::error::xcodebuild -list failed while verifying the QuietFactory scheme.")
+              print(text)
+              sys.exit(1)
+
+          data = json.loads(text[start:])
+          schemes = data.get("project", {}).get("schemes") or []
+          if "QuietFactory" not in schemes:
+              print("::error::xcodebuild does not list a shared scheme named QuietFactory.")
+              print(f"Found schemes: {schemes}")
+              sys.exit(1)
+
+          print("Found shared scheme QuietFactory")
+          PY
+
+      - name: Build Debug
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project QuietFactory.xcodeproj \
+            -scheme QuietFactory \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          echo "xcodebuild build succeeded"
+
+      - name: Select iPhone Simulator
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          proc = subprocess.run(
+              ["xcrun", "simctl", "list", "devices", "available", "-j"],
+              check=False,
+              capture_output=True,
+              text=True,
+          )
+          if proc.returncode != 0:
+              print("::error::xcrun simctl list devices available failed.")
+              print(proc.stdout)
+              print(proc.stderr)
+              sys.exit(1)
+
+          data = json.loads(proc.stdout)
+          candidates = []
+          for runtime, devices in data.get("devices", {}).items():
+              if "iOS" not in runtime:
+                  continue
+              for device in devices:
+                  name = device.get("name", "")
+                  udid = device.get("udid")
+                  if not udid or not device.get("isAvailable"):
+                      continue
+                  if "iPhone" not in name:
+                      continue
+                  candidates.append((runtime, name, udid))
+
+          if not candidates:
+              print("::error::No available iPhone Simulator found. Do not hardcode a device; CI requires a live simctl iPhone.")
+              print(proc.stdout)
+              sys.exit(1)
+
+          runtime, name, udid = candidates[-1]
+          dest = f"platform=iOS Simulator,id={udid}"
+          env_path = os.environ["GITHUB_ENV"]
+          with open(env_path, "a", encoding="utf-8") as handle:
+              handle.write(f"IOS_SIM_UDID={udid}\n")
+              handle.write(f"IOS_SIM_NAME={name}\n")
+              handle.write(f"IOS_SIM_RUNTIME={runtime}\n")
+              handle.write(f"IOS_SIM_DESTINATION={dest}\n")
+
+          print(f"Selected simulator: {name}")
+          print(f"UDID: {udid}")
+          print(f"Runtime: {runtime}")
+          print(f"Destination: {dest}")
+          PY
+
+      - name: Test
+        run: |
+          set -euo pipefail
+          if [[ -z "${IOS_SIM_DESTINATION:-}" ]]; then
+            echo "::error::No iPhone Simulator destination was selected."
+            exit 1
+          fi
+          echo "Testing on ${IOS_SIM_NAME} (${IOS_SIM_UDID})"
+          xcodebuild \
+            -project QuietFactory.xcodeproj \
+            -scheme QuietFactory \
+            -configuration Debug \
+            -destination "${IOS_SIM_DESTINATION}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+          echo "xcodebuild test succeeded"

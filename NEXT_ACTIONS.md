@@ -8,12 +8,14 @@ This file is intentionally tactical. Keep only the next meaningful work here.
 ## P0 — Do now
 
 ### 1. Bootstrap project
-- Create iOS app project
+- Create iOS app project at repo-root `QuietFactory.xcodeproj`
+- Add a shared scheme named `QuietFactory`
 - SwiftUI app shell
 - SpriteKit gameplay scene
 - Lock primary orientation to portrait
 - Establish folder/module structure
 - Add basic unit-test target
+- Keep GitHub `iOS CI` in the implementation loop; a SHA is not iOS-verified until that workflow passes
 
 ### 2. Implement deterministic core model
 - Grid coordinate model
@@ -92,3 +94,5 @@ Do not proceed to procedural generation until the loop passes.
 An implementation agent should not jump ahead into P2 simply because P0 is straightforward.
 
 The prototype gate is intentional.
+
+GitHub `iOS CI` is the authoritative Apple/Xcode validation loop. Inspect and fix CI failures; do not suppress tests or weaken the workflow.
