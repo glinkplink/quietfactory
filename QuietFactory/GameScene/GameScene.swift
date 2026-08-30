@@ -2,9 +2,10 @@ import SpriteKit
 
 final class GameScene: SKScene {
     private static let levelCompleteActionKey = "levelCompleteAdvance"
+    private static let releaseSequenceActionKey = "releaseSequence"
 
     /// Explicit draw order when SKView.ignoresSiblingOrder is true.
-    private enum Layer {
+    enum Layer {
         static let gridCell: CGFloat = 0
         static let boardCrate: CGFloat = 10
         static let crateBody: CGFloat = 0
@@ -53,8 +54,12 @@ final class GameScene: SKScene {
     /// Clears animation locks and re-syncs after restart or level change.
     func resetAndAttach(session: GameSession) {
         cancelPendingLevelComplete()
+        cancelPendingReleaseSequence()
         isSceneAnimating = false
         for node in crateNodes.values {
+            node.removeAllActions()
+        }
+        conveyorNode.enumerateChildNodes(withName: "conveyorCrate") { node, _ in
             node.removeAllActions()
         }
         self.session = session
@@ -64,6 +69,10 @@ final class GameScene: SKScene {
 
     private func cancelPendingLevelComplete() {
         removeAction(forKey: Self.levelCompleteActionKey)
+    }
+
+    private func cancelPendingReleaseSequence() {
+        removeAction(forKey: Self.releaseSequenceActionKey)
     }
 
     private func scheduleLevelComplete(after session: GameSession) {
@@ -160,13 +169,6 @@ final class GameScene: SKScene {
         )
     }
 
-    private func sceneToGrid(location: CGPoint) -> GridPosition {
-        let gridX = Int(location.x / cellSize)
-        let sceneRow = Int(location.y / cellSize)
-        let gridY = boardHeight - 1 - sceneRow
-        return GridPosition(x: gridX, y: gridY)
-    }
-
     func refreshFromSession(animated: Bool) {
         guard let session else { return }
         updateOverlay(for: session.state.status)
@@ -260,15 +262,19 @@ final class GameScene: SKScene {
     }
 
     private func syncConveyorCrates(_ conveyor: ConveyorState, animated: Bool) {
+        renderConveyorSlots(conveyor.slots, animated: animated)
+    }
+
+    private func renderConveyorSlots(_ slots: [ConveyorCrate], animated: Bool = false) {
         conveyorNode.enumerateChildNodes(withName: "conveyorCrate") { node, _ in node.removeFromParent() }
 
         guard !conveyorSlotNodes.isEmpty else { return }
-        let capacity = conveyor.capacity
+        let capacity = conveyorSlotNodes.count
         let slotSpacing: CGFloat = 4
         let boardWidth = CGFloat(capacity) * conveyorSlotNodes[0].frame.width + slotSpacing * CGFloat(capacity - 1)
         let slotWidth = (boardWidth - slotSpacing * CGFloat(capacity - 1)) / CGFloat(capacity)
 
-        for (index, crate) in conveyor.slots.enumerated() {
+        for (index, crate) in slots.enumerated() {
             let hue = crate.color.displayHue
             let node = SKShapeNode(rectOf: CGSize(width: slotWidth * 0.8, height: 36), cornerRadius: 5)
             node.name = "conveyorCrate"
@@ -315,7 +321,12 @@ final class GameScene: SKScene {
         guard !isSceneAnimating, let session, session.state.status == .playing else { return }
         guard let touch = touches.first else { return }
         let location = touch.location(in: boardNode)
-        let position = sceneToGrid(location: location)
+        guard let position = BoardHitTesting.gridPosition(
+            at: location,
+            boardWidth: session.state.board.width,
+            boardHeight: boardHeight,
+            cellSize: cellSize
+        ) else { return }
         guard let crateID = session.state.board.crateID(at: position) else { return }
 
         handleRelease(crateID: crateID)
@@ -332,40 +343,169 @@ final class GameScene: SKScene {
             return
         }
 
-        let capturedCrate = crate
+        let guardToken = WinCompletionGuard(session: session)
+
+        isSceneAnimating = true
         let result = session.attemptRelease(crateID: crateID)
 
         switch result {
         case .blocked:
+            isSceneAnimating = false
             HapticsManager.blocked()
             AudioManager.playBlocked()
             animateBlocked(crateID: crateID)
-        case .released(_, let cleared, let status):
+        case .released(_, _, let finalStatus, let presentation):
             HapticsManager.release()
             AudioManager.playRelease()
-            isSceneAnimating = true
-            animateRelease(crate: capturedCrate) {
-                AudioManager.playConveyorLanding()
-                HapticsManager.conveyorLanding()
-                if !cleared.isEmpty {
-                    AudioManager.playMatch()
-                    HapticsManager.match()
+            playReleasePresentation(
+                crate: crate,
+                presentation: presentation,
+                finalStatus: finalStatus,
+                guardToken: guardToken
+            )
+        }
+    }
+
+    private func playReleasePresentation(
+        crate: Crate,
+        presentation: ReleasePresentation,
+        finalStatus: GameStatus,
+        guardToken: WinCompletionGuard
+    ) {
+        cancelPendingReleaseSequence()
+
+        let finish: () -> Void = { [weak self] in
+            guard let self,
+                  let session = self.session,
+                  guardToken.isStillValid(for: session) else { return }
+
+            self.refreshFromSession(animated: false)
+            self.isSceneAnimating = false
+
+            switch finalStatus {
+            case .won:
+                HapticsManager.completion()
+                AudioManager.playWin()
+                self.scheduleLevelComplete(after: session)
+            case .stuck:
+                HapticsManager.failure()
+                AudioManager.playStuck()
+            case .playing:
+                break
+            }
+        }
+
+        let afterSlide: () -> Void = { [weak self] in
+            guard let self,
+                  let session = self.session,
+                  guardToken.isStillValid(for: session) else { return }
+
+            self.renderConveyorSlots(presentation.conveyorAfterLanding)
+            AudioManager.playConveyorLanding()
+            HapticsManager.conveyorLanding()
+
+            if presentation.matchSteps.isEmpty {
+                finish()
+            } else {
+                self.playMatchSteps(
+                    steps: presentation.matchSteps,
+                    slots: presentation.conveyorAfterLanding,
+                    stepIndex: 0,
+                    guardToken: guardToken,
+                    completion: finish
+                )
+            }
+        }
+
+        animateSlideOffBoard(crate: crate, guardToken: guardToken, completion: afterSlide)
+    }
+
+    private func playMatchSteps(
+        steps: [MatchClearStep],
+        slots: [ConveyorCrate],
+        stepIndex: Int,
+        guardToken: WinCompletionGuard,
+        completion: @escaping () -> Void
+    ) {
+        guard stepIndex < steps.count else {
+            completion()
+            return
+        }
+
+        let step = steps[stepIndex]
+        let readableHold: TimeInterval = 0.2
+        let clearDuration: TimeInterval = 0.15
+
+        let hold = SKAction.wait(forDuration: readableHold)
+        let matchCue = SKAction.run { [weak self] in
+            guard let self,
+                  let session = self.session,
+                  guardToken.isStillValid(for: session) else { return }
+            AudioManager.playMatch()
+            HapticsManager.match()
+        }
+
+        let clear = SKAction.run { [weak self] in
+            guard let self,
+                  let session = self.session,
+                  guardToken.isStillValid(for: session) else { return }
+
+            self.animateConveyorClear(range: step.range, duration: clearDuration) { [weak self] in
+                guard let self,
+                      let session = self.session,
+                      guardToken.isStillValid(for: session) else { return }
+
+                var remaining = slots
+                for priorStep in steps.prefix(stepIndex + 1) {
+                    remaining.removeSubrange(priorStep.range)
                 }
-                self.refreshFromSession(animated: true)
-                self.isSceneAnimating = false
-                switch status {
-                case .won:
-                    HapticsManager.completion()
-                    AudioManager.playWin()
-                    self.refreshFromSession(animated: false)
-                    if let session = self.session {
-                        self.scheduleLevelComplete(after: session)
-                    }
-                case .stuck:
-                    HapticsManager.failure()
-                    AudioManager.playStuck()
-                case .playing:
-                    break
+                self.renderConveyorSlots(remaining)
+
+                self.playMatchSteps(
+                    steps: steps,
+                    slots: slots,
+                    stepIndex: stepIndex + 1,
+                    guardToken: guardToken,
+                    completion: completion
+                )
+            }
+        }
+
+        run(
+            SKAction.sequence([hold, matchCue, clear]),
+            withKey: Self.releaseSequenceActionKey
+        )
+    }
+
+    private func animateConveyorClear(
+        range: Range<Int>,
+        duration: TimeInterval,
+        completion: @escaping () -> Void
+    ) {
+        let crateNodes = conveyorNode.children
+            .filter { $0.name == "conveyorCrate" }
+            .sorted { $0.position.x < $1.position.x }
+
+        guard range.upperBound <= crateNodes.count else {
+            completion()
+            return
+        }
+
+        let targets = Array(crateNodes[range])
+        guard !targets.isEmpty else {
+            completion()
+            return
+        }
+
+        var remaining = targets.count
+        let fadeOut = SKAction.fadeOut(withDuration: duration)
+        let remove = SKAction.removeFromParent()
+
+        for node in targets {
+            node.run(SKAction.sequence([fadeOut, remove])) {
+                remaining -= 1
+                if remaining == 0 {
+                    completion()
                 }
             }
         }
@@ -381,7 +521,11 @@ final class GameScene: SKScene {
         node.run(shake)
     }
 
-    private func animateRelease(crate: Crate, completion: @escaping () -> Void) {
+    private func animateSlideOffBoard(
+        crate: Crate,
+        guardToken: WinCompletionGuard,
+        completion: @escaping () -> Void
+    ) {
         guard let node = crateNodes[crate.id] else {
             completion()
             return
@@ -403,7 +547,10 @@ final class GameScene: SKScene {
             SKAction.move(to: target, duration: 0.25),
             SKAction.fadeOut(withDuration: 0.1),
             SKAction.removeFromParent()
-        ])) {
+        ])) { [weak self] in
+            guard let self,
+                  let session = self.session,
+                  guardToken.isStillValid(for: session) else { return }
             self.crateNodes.removeValue(forKey: crate.id)
             completion()
         }

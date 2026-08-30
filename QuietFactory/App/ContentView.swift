@@ -23,6 +23,7 @@ struct ContentView: View {
                 Text("Quiet Factory")
                     .font(.headline)
                     .foregroundStyle(.white)
+                    .accessibilityIdentifier("quiet-factory-title")
                 Text(levelPicker.session.level.name)
                     .font(.subheadline)
                     .foregroundStyle(.gray)
@@ -32,6 +33,7 @@ struct ContentView: View {
                 HapticsManager.selection()
                 levelPicker.session.restart()
             }
+            .accessibilityIdentifier("restart-button")
             .font(.subheadline.bold())
             .foregroundStyle(.white)
             .padding(.horizontal, 12)

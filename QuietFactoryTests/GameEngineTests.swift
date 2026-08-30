@@ -88,7 +88,7 @@ final class GameEngineTests: XCTestCase {
         ]
 
         let cleared = GameEngine.resolveMatches(on: &state)
-        XCTAssertEqual(cleared, [.green])
+        XCTAssertEqual(cleared.map(\.color), [.green])
         XCTAssertTrue(state.conveyor.slots.isEmpty)
     }
 
@@ -104,7 +104,7 @@ final class GameEngineTests: XCTestCase {
         ]
 
         let cleared = GameEngine.resolveMatches(on: &state)
-        XCTAssertEqual(cleared, [.red])
+        XCTAssertEqual(cleared.map(\.color), [.red])
         XCTAssertEqual(state.conveyor.slots.map(\.color), [.blue, .blue])
     }
 
@@ -285,5 +285,210 @@ final class GameEngineTests: XCTestCase {
         let token = WinCompletionGuard(session: first)
         let second = GameSession(level: LevelCatalog.onboarding[1])
         XCTAssertFalse(token.isStillValid(for: second))
+    }
+
+    // MARK: - Board hit testing
+
+    func testBoardHitTestingNegativeCoordinatesReturnNil() {
+        let cellSize: CGFloat = 44
+        XCTAssertNil(BoardHitTesting.gridPosition(
+            at: CGPoint(x: -0.5, y: 22),
+            boardWidth: 5,
+            boardHeight: 4,
+            cellSize: cellSize
+        ))
+        XCTAssertNil(BoardHitTesting.gridPosition(
+            at: CGPoint(x: 22, y: -0.5),
+            boardWidth: 5,
+            boardHeight: 4,
+            cellSize: cellSize
+        ))
+    }
+
+    func testBoardHitTestingJustOutsideRightAndTopReturnNil() {
+        let cellSize: CGFloat = 44
+        let width = 5
+        let height = 4
+        XCTAssertNil(BoardHitTesting.gridPosition(
+            at: CGPoint(x: CGFloat(width) * cellSize, y: cellSize / 2),
+            boardWidth: width,
+            boardHeight: height,
+            cellSize: cellSize
+        ))
+        XCTAssertNil(BoardHitTesting.gridPosition(
+            at: CGPoint(x: cellSize / 2, y: CGFloat(height) * cellSize),
+            boardWidth: width,
+            boardHeight: height,
+            cellSize: cellSize
+        ))
+    }
+
+    func testBoardHitTestingSceneOriginMapsToTopRowModelCell() {
+        let cellSize: CGFloat = 44
+        let height = 5
+        let position = BoardHitTesting.gridPosition(
+            at: CGPoint(x: cellSize / 2, y: cellSize / 2),
+            boardWidth: 5,
+            boardHeight: height,
+            cellSize: cellSize
+        )
+        XCTAssertEqual(position, GridPosition(x: 0, y: height - 1))
+    }
+
+    // MARK: - Release presentation trace
+
+    func testApplyRemainsAtomicWithLandingTrace() {
+        let board = makeBoard(width: 3, height: 3, crates: [(1, 1, .north, .red)])
+        var state = makeState(board: board)
+        state.conveyor.slots = [
+            ConveyorCrate(id: CrateID(rawValue: 100), color: .red),
+            ConveyorCrate(id: CrateID(rawValue: 101), color: .red)
+        ]
+        let priorSlots = state.conveyor.slots
+        let crateID = state.board.crates.values.first!.id
+
+        let result = try! GameEngine.apply(move: Move(crateID: crateID), to: state)
+
+        XCTAssertEqual(result.state.conveyor.slots, [])
+        XCTAssertNotEqual(result.conveyorAfterLanding, result.state.conveyor.slots)
+        XCTAssertEqual(result.conveyorAfterLanding, priorSlots + [ConveyorCrate(id: crateID, color: .red)])
+        XCTAssertEqual(result.conveyorAfterLanding.last?.id, crateID)
+    }
+
+    func testMatchStepsEmptyWhenNoMatchAfterLanding() {
+        let board = makeBoard(width: 3, height: 3, crates: [(1, 1, .north, .blue)])
+        var state = makeState(board: board)
+        let crateID = state.board.crates.values.first!.id
+
+        let result = try! GameEngine.apply(move: Move(crateID: crateID), to: state)
+
+        XCTAssertTrue(result.matchSteps.isEmpty)
+        XCTAssertEqual(result.state.conveyor.slots.count, 1)
+    }
+
+    func testOneMatchStepCoversLandedConveyorRange() {
+        let crateOnBoard = makeBoard(width: 3, height: 3, crates: [(1, 1, .north, .red)])
+        var releaseState = makeState(board: crateOnBoard)
+        releaseState.conveyor.slots = [
+            ConveyorCrate(id: CrateID(rawValue: 1), color: .red),
+            ConveyorCrate(id: CrateID(rawValue: 2), color: .red)
+        ]
+        let crateID = releaseState.board.crates.values.first!.id
+        let result = try! GameEngine.apply(move: Move(crateID: crateID), to: releaseState)
+
+        XCTAssertEqual(result.matchSteps.count, 1)
+        XCTAssertEqual(result.matchSteps[0].range, 0..<3)
+        XCTAssertEqual(result.matchSteps[0].color, .red)
+
+        var replay = result.conveyorAfterLanding
+        replay.removeSubrange(result.matchSteps[0].range)
+        XCTAssertEqual(replay, result.state.conveyor.slots)
+    }
+
+    func testMatchStepsLeftToRightOrdering() {
+        let board = makeBoard(width: 1, height: 1, crates: [])
+        var state = makeState(board: board)
+        state.conveyor.slots = [
+            ConveyorCrate(id: CrateID(rawValue: 1), color: .red),
+            ConveyorCrate(id: CrateID(rawValue: 2), color: .red),
+            ConveyorCrate(id: CrateID(rawValue: 3), color: .red),
+            ConveyorCrate(id: CrateID(rawValue: 4), color: .blue),
+            ConveyorCrate(id: CrateID(rawValue: 5), color: .blue)
+        ]
+
+        let steps = GameEngine.resolveMatches(on: &state)
+        XCTAssertEqual(steps.count, 1)
+        XCTAssertEqual(steps[0].range, 0..<3)
+        XCTAssertEqual(state.conveyor.slots.map(\.color), [.blue, .blue])
+    }
+
+    func testReplayingMatchStepsEqualsFinalConveyor() {
+        let board = makeBoard(width: 3, height: 3, crates: [(1, 1, .north, .red)])
+        var state = makeState(board: board)
+        state.conveyor.slots = [
+            ConveyorCrate(id: CrateID(rawValue: 100), color: .red),
+            ConveyorCrate(id: CrateID(rawValue: 101), color: .red)
+        ]
+        let crateID = state.board.crates.values.first!.id
+        let result = try! GameEngine.apply(move: Move(crateID: crateID), to: state)
+
+        var replay = result.conveyorAfterLanding
+        for step in result.matchSteps {
+            replay.removeSubrange(step.range)
+        }
+        XCTAssertEqual(replay, result.state.conveyor.slots)
+    }
+
+    func testSessionAttemptReleaseFinalStateWithLandingTrace() {
+        let level = LevelDefinition(
+            id: "test-session-trace",
+            name: "Session Trace",
+            width: 3,
+            height: 5,
+            crates: [
+                CrateDefinition(x: 1, y: 0, direction: .north, color: .red),
+                CrateDefinition(x: 1, y: 2, direction: .north, color: .red),
+                CrateDefinition(x: 1, y: 4, direction: .north, color: .red)
+            ],
+            matchSize: 3,
+            conveyorCapacity: 5,
+            category: .normal
+        )
+        let session = GameSession(level: level)
+
+        let bottomID = session.state.board.crates.values.first { $0.position.y == 4 }!.id
+        _ = session.attemptRelease(crateID: bottomID)
+
+        let middleID = session.state.board.crates.values.first { $0.position.y == 2 }!.id
+        _ = session.attemptRelease(crateID: middleID)
+
+        let topID = session.state.board.crates.values.first { $0.position.y == 0 }!.id
+        let result = session.attemptRelease(crateID: topID)
+
+        guard case .released(_, let cleared, let status, let presentation) = result else {
+            return XCTFail("Expected released result")
+        }
+        XCTAssertEqual(status, .won)
+        XCTAssertEqual(session.state.status, .won)
+        XCTAssertTrue(session.state.conveyor.slots.isEmpty)
+        XCTAssertEqual(presentation.conveyorAfterLanding.count, 3)
+        XCTAssertEqual(presentation.matchSteps.count, 1)
+        XCTAssertEqual(cleared, [.red])
+    }
+
+    func testReleaseAnimationPlanNoMatch() {
+        let landing = [
+            ConveyorCrate(id: CrateID(rawValue: 1), color: .blue)
+        ]
+        let plan = ReleaseAnimationPlan(conveyorAfterLanding: landing, matchSteps: [])
+        XCTAssertEqual(plan.phases, [.slide, .land])
+    }
+
+    func testReleaseAnimationPlanWithMatch() {
+        let landing = [
+            ConveyorCrate(id: CrateID(rawValue: 1), color: .red),
+            ConveyorCrate(id: CrateID(rawValue: 2), color: .red),
+            ConveyorCrate(id: CrateID(rawValue: 3), color: .red)
+        ]
+        let steps = [MatchClearStep(range: 0..<3, color: .red)]
+        let plan = ReleaseAnimationPlan(conveyorAfterLanding: landing, matchSteps: steps)
+        XCTAssertEqual(plan.phases, [.slide, .land, .reveal(range: 0..<3), .clear(range: 0..<3)])
+    }
+
+    func testCatalogLevelsAreSolvableExcludesUnsolvableFixture() {
+        let unsolvable = LevelDefinition(
+            id: "test-unsolvable",
+            name: "Unsolvable Fixture",
+            width: 4,
+            height: 3,
+            crates: [
+                CrateDefinition(x: 1, y: 1, direction: .east, color: .green),
+                CrateDefinition(x: 2, y: 1, direction: .west, color: .green)
+            ],
+            matchSize: 3,
+            conveyorCapacity: 5,
+            category: .normal
+        )
+        XCTAssertFalse(LevelSolver.canWin(level: unsolvable))
     }
 }

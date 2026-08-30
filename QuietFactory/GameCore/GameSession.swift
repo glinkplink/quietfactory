@@ -32,7 +32,11 @@ final class GameSession: ObservableObject {
             return .released(
                 crateID: result.releasedCrateID,
                 clearedColors: result.clearedMatchColors,
-                newStatus: state.status
+                newStatus: state.status,
+                presentation: ReleasePresentation(
+                    conveyorAfterLanding: result.conveyorAfterLanding,
+                    matchSteps: result.matchSteps
+                )
             )
         } catch {
             return .blocked(crateID: crateID)
@@ -45,6 +49,11 @@ final class GameSession: ObservableObject {
 }
 
 enum ReleaseAttemptResult {
-    case released(crateID: CrateID, clearedColors: [CrateColor], newStatus: GameStatus)
+    case released(
+        crateID: CrateID,
+        clearedColors: [CrateColor],
+        newStatus: GameStatus,
+        presentation: ReleasePresentation
+    )
     case blocked(crateID: CrateID)
 }

@@ -15,4 +15,6 @@ struct MoveResult: Sendable {
     let state: GameState
     let clearedMatchColors: [CrateColor]
     let releasedCrateID: CrateID
+    let conveyorAfterLanding: [ConveyorCrate]
+    let matchSteps: [MatchClearStep]
 }

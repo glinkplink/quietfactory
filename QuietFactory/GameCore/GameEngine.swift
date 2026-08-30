@@ -43,21 +43,28 @@ enum GameEngine {
         newState.board.crates.removeValue(forKey: move.crateID)
         newState.conveyor.slots.append(ConveyorCrate(id: crate.id, color: crate.color))
 
-        let cleared = resolveMatches(on: &newState)
+        let conveyorAfterLanding = newState.conveyor.slots
+        let matchSteps = resolveMatches(on: &newState)
         evaluateOutcome(&newState)
 
-        return MoveResult(state: newState, clearedMatchColors: cleared, releasedCrateID: move.crateID)
+        return MoveResult(
+            state: newState,
+            clearedMatchColors: matchSteps.map(\.color),
+            releasedCrateID: move.crateID,
+            conveyorAfterLanding: conveyorAfterLanding,
+            matchSteps: matchSteps
+        )
     }
 
     /// Removes the first eligible match repeatedly until none remain. Deterministic: left-to-right scan.
-    static func resolveMatches(on state: inout GameState) -> [CrateColor] {
-        var clearedColors: [CrateColor] = []
+    static func resolveMatches(on state: inout GameState) -> [MatchClearStep] {
+        var steps: [MatchClearStep] = []
         while let match = findFirstMatch(in: state.conveyor.slots, matchSize: state.matchSize) {
             let color = state.conveyor.slots[match.lowerBound].color
+            steps.append(MatchClearStep(range: match, color: color))
             state.conveyor.slots.removeSubrange(match)
-            clearedColors.append(color)
         }
-        return clearedColors
+        return steps
     }
 
     private static func findFirstMatch(in slots: [ConveyorCrate], matchSize: Int) -> Range<Int>? {
