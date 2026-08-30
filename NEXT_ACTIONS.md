@@ -1,98 +1,67 @@
 # Quiet Factory — Next Actions
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 This file is intentionally tactical. Keep only the next meaningful work here.
 
----
-
-## P0 — Do now
-
-### 1. Bootstrap project
-- Create iOS app project at repo-root `QuietFactory.xcodeproj`
-- Add a shared scheme named `QuietFactory`
-- SwiftUI app shell
-- SpriteKit gameplay scene
-- Lock primary orientation to portrait
-- Establish folder/module structure
-- Add basic unit-test target
-- Keep GitHub `iOS CI` in the implementation loop; a SHA is not iOS-verified until that workflow passes
-
-### 2. Implement deterministic core model
-- Grid coordinate model
-- Crate/block model
-- Direction enum
-- Occupancy lookup
-- Release-validity check
-- Move execution
-- Conveyor state
-- Match/clear logic
-- Win-state evaluation
-
-**Important:** Keep game rules independent of SpriteKit.
-
-### 3. Build gray-box renderer
-Use placeholder geometry only.
-
-Need:
-- grid
-- crate/block
-- arrow/direction indicator
-- conveyor slots
-- blocked feedback
-- movement animation
-- clear animation
-
-### 4. Add tactile feedback
-- valid tap haptic
-- blocked tap haptic
-- conveyor landing haptic
-- match haptic
-- completion haptic
-
-Use placeholder sounds if necessary.
-
-### 5. Hand-author prototype boards
-Create at least:
-- 3 trivial onboarding boards
-- 5 normal boards
-- 3 boards with meaningful conveyor sequencing
-- 2 deliberately difficult / near-stuck boards
+Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 ---
 
-## P1 — Prototype evaluation
+## P0 — Install and validate development automation
 
-After gray-box is playable:
+Complete in roughly this order:
 
-- test without verbal explanation where possible
-- record misunderstandings
-- measure approximate board completion time
-- note whether players restart voluntarily
-- identify whether conveyor decisions feel strategic or merely annoying
-- tune buffer size and match size
-- tune animation timing
-- remove unnecessary rules
+1. **Finish automation protocol/docs** — `docs/AUTOMATION_PROTOCOL.md`, `.cursor/BUGBOT.md`, handoff/runtime updates.
+2. **Add project subagents** — Composer implementation, Grok reviewer, Sol gate, fixers per protocol.
+3. **Configure Grok PR reviewer statuses** — full-PR review against `main`; emit `QF_GROK_HEAD` / `QF_GROK_STATUS`.
+4. **Add Composer review-fixer automation** — fix P0/P1 on same PR branch; no replacement PRs.
+5. **Add Sol pre-playtest gate** — run only after CI green + Grok PASS; emit `QF_SOL_*` and `QF_PLAYTEST_READY`.
+6. **Add playtest-fail fixer** — on `PLAYTEST: FAIL`, fix on same milestone PR and re-run machine gates.
+7. **Add post-merge next-milestone automation** — after manual merge, branch fresh from `main` and open next draft PR.
+8. **Validate the automation chain against current PR #1** — end-to-end dry run without consuming human playtest time.
+9. **Only after the chain works**, decide whether PR #1 qualifies for another human playtest.
 
-Do not proceed to procedural generation until the loop passes.
+Do not claim automation is active until step 8 passes.
 
 ---
 
-## P2 — After prototype passes
+## P1 — After automation is validated
 
-- formalize level schema
-- implement move-history + undo
-- implement solver
-- implement seeded generator
-- define difficulty metrics
-- build seed-validation tests
-- design first visual theme
+### Human playtest gray-box MVP (PR #1)
+
+Only when PR #1 head has `QF_PLAYTEST_READY` for that exact SHA:
+
+- Define a predefined human question before opening Appetize (see `docs/AUTOMATION_PROTOCOL.md` § E).
+- Download CI simulator artifact or run from `agent/mvp-nightly`.
+- Record `PLAYTEST: PASS` or `PLAYTEST: FAIL`.
+- On PASS → human manually merges PR #1.
+- On FAIL → fix on same PR, re-run full machine gates, then playtest again.
+
+### Tune from playtest (if needed)
+
+- Animation timing, haptic/audio intensity, confusing level layouts, win pause duration.
+
+---
+
+## P2 — Prototype evaluation (after gray-box playtest passes)
+
+- Test without verbal explanation where possible
+- Record misunderstandings and voluntary replay behavior
+- Tune buffer/match size and remove unnecessary rules
+- Do not proceed to procedural generation until the loop passes
+
+---
+
+## P3 — After prototype passes
+
+- Formalize level schema, undo, solver, seeded generator, difficulty metrics, first visual theme
 
 ---
 
 ## Agent rule
 
-An implementation agent should not jump ahead into P2 simply because P0 is straightforward.
+An implementation agent should not jump ahead into P2/P3 gameplay work while P0 automation remains incomplete.
 
-The prototype gate is intentional.
+The prototype gate and playtest gate are intentional.
 
 GitHub `iOS CI` is the authoritative Apple/Xcode validation loop. Inspect and fix CI failures; do not suppress tests or weaken the workflow.

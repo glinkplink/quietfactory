@@ -1,5 +1,5 @@
 # Quiet Factory — Agent Handoff
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 Use this file to orient any coding agent before implementation.
 
@@ -12,12 +12,25 @@ Use this file to orient any coding agent before implementation.
 3. `DECISIONS.md`
 4. `NEXT_ACTIONS.md`
 5. this file
+6. `docs/AUTOMATION_PROTOCOL.md` — development workflow and automation gates
 
 If files conflict:
 - `DECISIONS.md` controls durable decisions.
 - `RUNTIME_STATE.md` controls current execution state.
 - `MASTER_PLAN.md` controls overall product intent.
 - explicit current user instruction overrides all repo docs.
+
+---
+
+## Development automation
+
+Gameplay and product rules in this file remain **authoritative for game behavior**.
+
+Development workflow, model roles, PR lifecycle, review gates, and playtest policy live in **`docs/AUTOMATION_PROTOCOL.md`**.
+
+When process and product guidance conflict:
+- **product/mechanics canon wins** for game behavior;
+- automation must **never silently reinterpret** game rules.
 
 ---
 
