@@ -5,18 +5,17 @@ This file is the short-lived operational truth for the project.
 
 Do not turn this into product canon. Durable decisions belong in `DECISIONS.md`; the complete product thesis belongs in `MASTER_PLAN.md`.
 
-Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machine gate results (`QF_GROK_*`, `QF_SOL_*`, `QF_PLAYTEST_READY`) belong in PR comments, automation output, or commit-adjacent artifacts — not here.
+Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machine gate results (`QF_GROK_*`, `QF_FINAL_*`, `QF_PLAYTEST_READY`) belong in PR comments, automation output, or commit-adjacent artifacts — not here.
 
 ---
 
 ## Current phase
 
-**Phase 1 — Gray-box MVP milestone (PR #1) + automation infrastructure**
+**Phase 1 — Gray-box MVP milestone (PR #1) + automation validation**
 
 ## Current objective
 
-1. Install and validate the development automation pipeline documented in `docs/AUTOMATION_PROTOCOL.md`.
-2. Defer further human playtest until the automated pre-playtest gate is operational.
+End-to-end validation of the actual PR #1 orchestrator chain.
 
 Do **not** start new gameplay changes on `main` during this pass.
 
@@ -41,24 +40,27 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 | Item | Status |
 |------|--------|
-| `docs/AUTOMATION_PROTOCOL.md` | **Documented** |
-| `.cursor/BUGBOT.md` review rubric | **Documented** |
-| `architecture-escalator` project subagent (`.cursor/agents/`) | **Documented** — read-only Grok 4.6; not configured as automation |
-| Grok PR reviewer automation (`QF — Grok Milestone Reviewer`) | **Configured externally** |
-| Composer review-fixer automation | **Planned** — not configured |
-| Sol pre-playtest gate | **Planned** — not configured |
-| Playtest-fail fixer | **Planned** — not configured |
-| Post-merge next-milestone automation | **Planned** — not configured |
+| `docs/AUTOMATION_PROTOCOL.md` | **Locked** |
+| `.cursor/BUGBOT.md` review rubric | **Locked** |
+| `architecture-escalator` project subagent | **Documented** |
+| `implementation-worker` project subagent | **Documented** — custom routing smoke test **passed** (discovered and invoked) |
+| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; custom routing smoke test **passed** (discovered and invoked) |
+| Child model identity | Cursor does **not** expose child `originalModelName`; exact runtime child model identity cannot be directly observed |
+| Routing/fallback warnings | **None** during smoke tests |
+| `QF — Milestone Orchestrator` | **Configured externally** — **ENABLED** |
+| `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** until PR #1 is ready to lead into the next milestone |
+
+No additional automation components are planned. The locked two-automation architecture is unchanged.
 
 ### Human playtest
 
-- Human playtest is **intentionally deferred** until the automated pre-playtest gate (`QF_PLAYTEST_READY`) is operational.
+- Human playtest is **intentionally deferred** until the orchestrator chain is validated and posts `QF_PLAYTEST_READY` for an exact head.
 - Appetize time is scarce (~30 free minutes total); do not consume it for routine validation.
 - A green CI run or informal review alone does **not** authorize human playtesting.
 
 ## Active scope
 
-- Automation infrastructure and operating-protocol docs
+- End-to-end validation of the actual PR #1 orchestrator chain
 - PR #1 remains open as the gray-box milestone (fixes via same PR only)
 
 ## Not active yet
@@ -69,12 +71,19 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 ## Immediate success criterion
 
-The automation chain (CI → Grok review → Composer fixes → Sol gate → playtest authorization) is **configured, validated against PR #1, and documented** before another human playtest is scheduled.
+The orchestrator chain (Grok review → `implementation-worker` fixes if needed → exact-head CI → independent `pre-playtest-reviewer` → `QF_PLAYTEST_READY`) is **validated against PR #1** before human playtest or enabling `QF — Next Milestone Starter`.
 
 ## Current blockers
 
-None for documentation. Remaining automation components (Composer fixer, Sol gate, playtest-fail fixer, post-merge automation) are not yet implemented.
+Setup is complete. Remaining work is production end-to-end validation of the enabled orchestrator against PR #1. Exact runtime child model identity cannot be observed because Cursor does not expose child `originalModelName`.
 
 ## Next checkpoint
 
-Validate the full automation chain against PR #1; only then decide whether PR #1 qualifies for another human playtest.
+1. Push this synced PR #1 head (triggers `QF — Milestone Orchestrator`).
+2. Validate Grok exact-head review.
+3. If Grok finds P0/P1, validate delegation to `implementation-worker` and same-PR fix loop.
+4. Validate exact-head iOS CI handling.
+5. Validate final `pre-playtest-reviewer` invocation.
+6. Confirm `QF_GROK_HEAD`, `QF_GROK_STATUS`, `QF_FINAL_HEAD`, `QF_FINAL_STATUS`, and `QF_PLAYTEST_READY` all refer to the same exact head.
+7. Only then perform human Appetize playtest.
+8. On successful human playtest, prepare for manual PR #1 merge and enable `QF — Next Milestone Starter`.

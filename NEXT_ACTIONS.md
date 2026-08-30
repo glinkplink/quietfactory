@@ -7,21 +7,22 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 ---
 
-## P0 — Install and validate development automation
+## P0 — Validate PR #1 orchestrator chain
+
+Automation protocol/docs are locked. Custom routing smoke tests passed for `implementation-worker` and `pre-playtest-reviewer` (discovered and invoked; no routing/fallback warnings). Cursor does not expose child `originalModelName`, so exact runtime child model identity cannot be directly observed. `QF — Milestone Orchestrator` is enabled. `QF — Next Milestone Starter` remains disabled until PR #1 is ready to lead into the next milestone.
 
 Complete in roughly this order:
 
-1. **Automation protocol/docs** — merged to `main` (`docs/AUTOMATION_PROTOCOL.md`, `.cursor/BUGBOT.md`, handoff/runtime updates).
-2. **Add project subagents** — `architecture-escalator` (read-only Grok 4.6) documented on `main`. Grok PR reviewer and Sol gates are top-level Cloud Agent automations, not nested repo subagents.
-3. **Configure Grok PR reviewer statuses** — full-PR review against `main`; emit `QF_GROK_HEAD` / `QF_GROK_STATUS`. **Configured externally** as `QF — Grok Milestone Reviewer`.
-4. **Add Composer review-fixer automation** — fix P0/P1 on same PR branch; no replacement PRs.
-5. **Add Sol pre-playtest gate** — run only after CI green + Grok PASS; emit `QF_SOL_*` and `QF_PLAYTEST_READY`.
-6. **Add playtest-fail fixer** — on `PLAYTEST: FAIL`, fix on same milestone PR and re-run machine gates.
-7. **Add post-merge next-milestone automation** — after manual merge, branch fresh from `main` and open next draft PR.
-8. **Validate the automation chain against current PR #1** — end-to-end dry run without consuming human playtest time.
-9. **Only after the chain works**, decide whether PR #1 qualifies for another human playtest.
+1. **Push this synced PR #1 head** (`agent/mvp-nightly`) so enabled `QF — Milestone Orchestrator` receives a real PR-pushed event.
+2. **Validate exact-head Grok review** — confirm `QF_GROK_HEAD` / `QF_GROK_STATUS` on the new SHA.
+3. **If Grok finds P0/P1**, validate delegation to `implementation-worker` and the same-PR fix loop.
+4. **Validate exact-head iOS CI handling** — orchestrator waits for green CI before final review.
+5. **Validate final `pre-playtest-reviewer` invocation**.
+6. **Confirm exact-head certification** — `QF_GROK_HEAD`, `QF_GROK_STATUS`, `QF_FINAL_HEAD`, `QF_FINAL_STATUS`, and `QF_PLAYTEST_READY` all refer to the same exact head.
+7. **Only then consume human Appetize time** (see P1 below).
+8. **On successful human playtest**, prepare for manual PR #1 merge and enable `QF — Next Milestone Starter`.
 
-Do not claim automation is active until step 8 passes.
+Do not claim automation is validated until steps 2–6 pass.
 
 ---
 
@@ -41,8 +42,8 @@ Only when PR #1 head has `QF_PLAYTEST_READY` for that exact SHA:
 - Confirm win state is visible for ~1 second before auto-advance
 - Note any levels that feel unfair or visually unclear
 - Record `PLAYTEST: PASS` or `PLAYTEST: FAIL`.
-- On PASS → human manually merges PR #1.
-- On FAIL → fix on same PR, re-run full machine gates, then playtest again.
+- On PASS → human manually merges PR #1 → enable `QF — Next Milestone Starter` only when ready for the next milestone.
+- On FAIL → orchestrator delegates fixes on same PR, re-run full machine gates, then playtest again.
 
 ### Tune from playtest (if needed)
 
@@ -70,7 +71,7 @@ Only when PR #1 head has `QF_PLAYTEST_READY` for that exact SHA:
 
 ## Agent rule
 
-An implementation agent should not jump ahead into P2/P3 gameplay work while P0 automation remains incomplete.
+An implementation agent should not jump ahead into P2/P3 gameplay work while P0 validation remains incomplete.
 
 The prototype gate and playtest gate are intentional.
 
