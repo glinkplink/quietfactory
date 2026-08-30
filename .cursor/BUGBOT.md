@@ -84,6 +84,14 @@ List all findings with severity (P0–P3) above the status block.
 
 ---
 
+## Certification ownership
+
+The top-level **Grok milestone orchestrator** owns all `QF_GROK_*`, `QF_FINAL_*`, and `QF_PLAYTEST_READY` PR markers.
+
+Repo subagents (`implementation-worker`, `pre-playtest-reviewer`, `architecture-escalator`) return structured results to the parent orchestrator and must **not** independently post certification markers.
+
+---
+
 ## Escalation note
 
-If the implementation agent disputes a P0/P1 finding with evidence, they must record `QF_TECHNICAL_DISPUTE: …` per `docs/AUTOMATION_PROTOCOL.md`. Do not use reviewer voting; credible P0/P1 findings block until resolved or explicitly adjudicated by Sol High.
+If the implementation agent disputes a P0/P1 finding with evidence, they must record `QF_TECHNICAL_DISPUTE: …` per `docs/AUTOMATION_PROTOCOL.md`. Do not use reviewer voting; credible P0/P1 findings block until resolved or explicitly adjudicated by a human.
