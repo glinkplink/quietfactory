@@ -18,9 +18,9 @@ PR opened / pushed
   → if P0/P1: implementation-worker fixes SAME PR branch and pushes
   → new push restarts Grok review
   → if no P0/P1: wait for exact-head CI
-  → if CI green: orchestrator invokes pre-playtest-reviewer (readonly Sol)
-  → if Sol blocks: implementation-worker fixes SAME PR branch and pushes
-  → if Sol passes: orchestrator posts QF_PLAYTEST_READY
+  → if CI green: orchestrator invokes pre-playtest-reviewer (independent final reviewer)
+  → if final review blocks: implementation-worker fixes SAME PR branch and pushes
+  → if final review passes: orchestrator posts QF_PLAYTEST_READY
   → human playtest
   → manual merge
   → (separate) post-merge next-milestone automation
@@ -60,7 +60,7 @@ After a successful human playtest:
 6. Invoke **`pre-playtest-reviewer`** only after:
    - Grok has **zero P0/P1** for the exact head, and
    - **exact-head** `iOS CI` succeeds.
-7. Translate `pre-playtest-reviewer` results into `QF_SOL_HEAD` / `QF_SOL_STATUS` and, when appropriate, `QF_PLAYTEST_READY`.
+7. Translate `pre-playtest-reviewer` results into `QF_FINAL_HEAD` / `QF_FINAL_STATUS` and, when appropriate, `QF_PLAYTEST_READY`.
 
 Any push **invalidates** all prior review/certification and restarts from Grok.
 
@@ -76,7 +76,7 @@ Any push **invalidates** all prior review/certification and restarts from Grok.
 The following were considered and **abandoned** because Cursor's generic PR-comment Automation trigger does **not** provide safe regex/body filtering in the current UI, and **bot-generated PR comments cannot be relied upon** to trigger another Cursor Automation:
 
 - Separate **Composer review-fixer** top-level automation
-- Separate **Sol pre-playtest** top-level automation
+- Separate **final-reviewer** top-level automation
 - **Bot-comment chaining** between Cursor Automations
 
 Therefore the **Grok milestone orchestrator** owns the complete machine gate for the current head.
@@ -95,7 +95,7 @@ Do **not** spend Appetize time verifying defects that could have been discovered
 
 - unit/integration tests
 - GitHub `iOS CI`
-- code review (Grok / Sol)
+- code review (Grok / independent final reviewer)
 - simulator automation
 - screenshot or rendering artifacts
 - deterministic model/solver checks
@@ -133,22 +133,33 @@ Infrastructure, automation, CI, docs, and tooling PRs **do not automatically tri
 
 ---
 
-## B. Model roles
+## Current model bindings
+
+| Role | Binding |
+| --- | --- |
+| Milestone orchestrator | Cursor Grok 4.6 High, non-Fast |
+| Implementation worker | `composer-2.5[fast=false]` |
+| Architecture escalator | Grok 4.6, read-only |
+| Independent pre-playtest reviewer | `kimi-k3-high`, read-only |
+
+Workflow semantics depend on roles, not providers. Changing a model binding does not require redesigning the automation protocol unless the role behavior itself changes.
+
+---
 
 ### Top-level orchestration vs repo subagents
 
 | Role | Where it lives |
 |------|----------------|
 | Milestone orchestration, Grok review, certification markers | **Top-level automation:** `QF — Grok Milestone Orchestrator` |
-| Routine code modifications / P0/P1 fixes | **Project subagent:** `.cursor/agents/implementation-worker.md` (Composer 2.5 standard, non-Fast) |
-| Implementation-time architecture escalation | **Project subagent:** `.cursor/agents/architecture-escalator.md` (read-only Grok 4.6) |
-| Final scarce pre-playtest review | **Project subagent:** `.cursor/agents/pre-playtest-reviewer.md` (readonly GPT-5.6 Sol Medium) — invoked **only** by the orchestrator |
+| Routine code modifications / P0/P1 fixes | **Project subagent:** `.cursor/agents/implementation-worker.md` |
+| Implementation-time architecture escalation | **Project subagent:** `.cursor/agents/architecture-escalator.md` (read-only) |
+| Independent final pre-playtest review | **Project subagent:** `.cursor/agents/pre-playtest-reviewer.md` (read-only) — invoked **only** by the orchestrator |
 | Human playtest | Human — comprehension / feel / fun / frustration / clarity |
 | Post-merge next milestone | **Planned** separate top-level automation |
 
-**Normal implementation agents must not casually invoke Sol.** Only the parent orchestrator may call `pre-playtest-reviewer`, and only under the cost rule above.
+**Normal implementation agents must not casually invoke the independent final reviewer.** Only the parent orchestrator may call `pre-playtest-reviewer`, and only under the cost rule above.
 
-Subagents return **structured results to the parent** and must **not** independently post `QF_GROK_*`, `QF_SOL_*`, or `QF_PLAYTEST_READY` markers.
+Subagents return **structured results to the parent** and must **not** independently post `QF_GROK_*`, `QF_FINAL_*`, or `QF_PLAYTEST_READY` markers.
 
 ---
 
@@ -196,11 +207,9 @@ See `.cursor/BUGBOT.md` for the canonical review rubric.
 
 ---
 
-### Composer 2.5 — implementation worker (`implementation-worker`)
+### Implementation worker (`implementation-worker`)
 
 **Path:** `.cursor/agents/implementation-worker.md`
-
-**Model:** `composer-2.5[fast=false]` (standard Composer, non-Fast)
 
 **Use for:**
 
@@ -215,16 +224,15 @@ See `.cursor/BUGBOT.md` for the canonical review rubric.
 
 The implementation worker performs coding work **on the existing branch** when the orchestrator delegates. It does **not** own review or certification.
 
-Composer may escalate via `ARCHITECTURE_ESCALATION_REQUIRED`; the orchestrator decides whether to invoke `architecture-escalator`.
+The worker may escalate via `ARCHITECTURE_ESCALATION_REQUIRED`; the orchestrator decides whether to invoke `architecture-escalator`.
 
 ---
 
-### Grok 4.6 High — architecture escalation (`architecture-escalator`)
+### Architecture escalation (`architecture-escalator`)
 
 Implementation-time architecture escalation uses the read-only project subagent:
 
 - **Path:** `.cursor/agents/architecture-escalator.md`
-- **Model:** `grok-4.6`
 - **Mode:** `readonly: true` — advisory only; does not edit files
 
 The orchestrator (or implementation worker via escalation signal) may invoke `architecture-escalator` **only when**:
@@ -241,15 +249,13 @@ Architecture escalation is **advisory/read-only** unless explicitly authorized o
 
 ---
 
-### GPT-5.6 Sol Medium — final pre-playtest gate (`pre-playtest-reviewer`)
+### Independent final reviewer (`pre-playtest-reviewer`)
 
 **Path:** `.cursor/agents/pre-playtest-reviewer.md`
 
-**Model:** `gpt-5.6-sol[effort=medium,fast=false]`
-
 **Mode:** `readonly: true`
 
-**Expensive model. Do not use continuously.**
+**Expensive final machine gate. Do not use continuously.**
 
 Invoked **only** by the Grok milestone orchestrator, **only after**:
 
@@ -257,24 +263,28 @@ Invoked **only** by the Grok milestone orchestrator, **only after**:
 2. `iOS CI` succeeds on the **exact current head**
 3. the PR is actually a **gameplay/playtest milestone**
 
+The independent final reviewer must:
+
+- review the **complete PR against `main`** on its own terms
+- **not** assume Grok is correct merely because Grok passed
+- block only for **P0/P1** machine-detectable issues
+
 **Question it must answer:**
 
 > Is there any material defect, contradiction, missing automated test, or machine-detectable uncertainty that should be resolved BEFORE scarce human playtest time is consumed?
 
-Only **P0/P1-level** issues block.
-
 The subagent returns `PASS` or `BLOCKED` to the parent. The **orchestrator** translates that into:
 
 ```
-QF_SOL_HEAD: <sha>
-QF_SOL_STATUS: PASS
+QF_FINAL_HEAD: <sha>
+QF_FINAL_STATUS: PASS
 ```
 
 or
 
 ```
-QF_SOL_HEAD: <sha>
-QF_SOL_STATUS: BLOCKED
+QF_FINAL_HEAD: <sha>
+QF_FINAL_STATUS: BLOCKED
 ```
 
 If `PASS`, the orchestrator also emits:
@@ -283,32 +293,17 @@ If `PASS`, the orchestrator also emits:
 QF_PLAYTEST_READY: <sha>
 ```
 
----
+**Desired certification sequence on pass:**
 
-### GPT-5.6 Sol High — rare dispute adjudicator
+```
+QF_GROK_HEAD: <sha>
+QF_GROK_STATUS: PASS
 
-**Use only when a genuine technical disagreement cannot be resolved normally.**
+QF_FINAL_HEAD: <sha>
+QF_FINAL_STATUS: PASS
 
-Will be used only through a separate, explicitly invoked **top-level Cloud Agent adjudication path** if a genuine technical dispute survives normal review/fix cycles.
-
-It is **NOT** a nested repo subagent. Do **not** create additional Sol project subagents for adjudication.
-
-Do **not** use as a routine reviewer. Implementation agents must **not** invoke Sol directly.
-
-Feed it only:
-
-- the disputed finding
-- the implementation agent's counterargument
-- the relevant Grok conclusion
-- relevant code
-- relevant canon
-
-**Expected decision:**
-
-- `UPHOLD` — reviewer finding stands; fix required
-- `OVERRULE` — reviewer finding rejected with evidence
-
-Do **not** use reviewer "voting." A credible P0/P1 blocks until resolved or explicitly adjudicated.
+QF_PLAYTEST_READY: <sha>
+```
 
 ---
 
@@ -316,7 +311,7 @@ Do **not** use reviewer "voting." A credible P0/P1 blocks until resolved or expl
 
 ### Implementation worker should not escalate merely because a task is difficult
 
-Escalate to the **`architecture-escalator`** project subagent (Grok architecture review) when:
+Escalate to the **`architecture-escalator`** project subagent when:
 
 1. gameplay semantics must change
 2. GameCore vs UI ownership is unclear
@@ -335,21 +330,21 @@ Escalate to the **`architecture-escalator`** project subagent (Grok architecture
 
 ### If Grok PASS + CI green + pre-playtest-reviewer BLOCK
 
-1. Treat the Sol finding as **blocking**
+1. Treat the final-review finding as **blocking**
 2. Orchestrator invokes `implementation-worker` to fix on the same PR
 3. Push
-4. Old Grok and Sol certifications become **stale**
+4. Old Grok and final-review certifications become **stale**
 5. Run the **full gate** again (Grok → CI → pre-playtest-reviewer)
 
 ### Technical disputes
 
-If the implementation agent believes a reviewer finding is factually wrong, it must explicitly record:
+If Grok and the independent final reviewer genuinely disagree on a P0/P1, or if the implementation agent believes a reviewer finding is factually wrong, record:
 
 ```
 QF_TECHNICAL_DISPUTE: <concise evidence-backed explanation>
 ```
 
-Only then may the rare **Sol High adjudication** path be used.
+Then **stop** and require **human resolution**. Do **not** hard-code another model as a permanent adjudicator.
 
 ---
 
@@ -381,7 +376,7 @@ Exact lifecycle for a **gameplay milestone PR**:
 |-----------|---------------------|
 | Green CI alone | **No** |
 | Grok PASS alone | **No** |
-| Sol PASS against a stale SHA | **No** |
+| Final review PASS against a stale SHA | **No** |
 | `QF_PLAYTEST_READY` for the **exact artifact SHA** | **Yes** |
 
 ---
@@ -416,7 +411,7 @@ Every machine certification is tied to an **exact commit SHA**.
 Any code change after:
 
 - Grok PASS
-- Sol PASS
+- final review PASS
 - `QF_PLAYTEST_READY` certification
 
 makes those certifications **stale**.
@@ -452,10 +447,10 @@ Preserve all existing Quiet Factory constraints from `AGENT_HANDOFF.md` and `DEC
 | This protocol document | **Documented** |
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
-| `pre-playtest-reviewer` project subagent | **Documented** |
+| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; not yet validated in an actual Cloud subagent run |
 | `QF — Grok Milestone Orchestrator` | **Configured externally** — instructions should be updated to orchestrator role |
 | Separate Composer review-fixer automation | **Abandoned** — orchestrator delegates to `implementation-worker` |
-| Separate Sol pre-playtest top-level automation | **Abandoned** — orchestrator invokes `pre-playtest-reviewer` |
+| Separate final-reviewer top-level automation | **Abandoned** — orchestrator invokes `pre-playtest-reviewer` |
 | Bot-comment automation chaining | **Abandoned** — unsuitable with current Cursor Automation UI |
 | Playtest-fail fixer | **Planned** — orchestrator may delegate fixes; dedicated automation TBD |
 | Post-merge next-milestone automation | **Planned** — not yet configured |

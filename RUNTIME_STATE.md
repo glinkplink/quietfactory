@@ -5,7 +5,7 @@ This file is the short-lived operational truth for the project.
 
 Do not turn this into product canon. Durable decisions belong in `DECISIONS.md`; the complete product thesis belongs in `MASTER_PLAN.md`.
 
-Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machine gate results (`QF_GROK_*`, `QF_SOL_*`, `QF_PLAYTEST_READY`) belong in PR comments, automation output, or commit-adjacent artifacts — not here.
+Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machine gate results (`QF_GROK_*`, `QF_FINAL_*`, `QF_PLAYTEST_READY`) belong in PR comments, automation output, or commit-adjacent artifacts — not here.
 
 ---
 
@@ -36,10 +36,10 @@ Do **not** start new gameplay changes on `main` during this pass.
 | `.cursor/BUGBOT.md` review rubric | **Documented** |
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
-| `pre-playtest-reviewer` project subagent | **Documented** |
+| `pre-playtest-reviewer` project subagent | **Documented** — currently bound to `kimi-k3-high`; **not yet validated** in an actual Cloud subagent run |
 | `QF — Grok Milestone Orchestrator` (externally configured as `QF — Grok Milestone Reviewer`) | **Configured externally** — instructions should be updated to orchestrator role |
 | Separate Composer review-fixer automation | **Abandoned** — generic PR-comment automation chaining is unsuitable; orchestrator delegates to `implementation-worker` |
-| Separate Sol pre-playtest top-level automation | **Abandoned** — orchestrator invokes `pre-playtest-reviewer` subagent |
+| Separate final-reviewer top-level automation | **Abandoned** — orchestrator invokes `pre-playtest-reviewer` subagent |
 | Post-merge next-milestone automation | **Planned** — not configured |
 
 ### Human playtest
@@ -61,12 +61,12 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 ## Immediate success criterion
 
-The orchestrator chain (Grok review → `implementation-worker` fixes → exact-head CI → `pre-playtest-reviewer` → `QF_PLAYTEST_READY`) is **documented, configured, and validated against PR #1** before another human playtest is scheduled.
+The orchestrator chain (Grok review → `implementation-worker` fixes → exact-head CI → independent `pre-playtest-reviewer` → `QF_PLAYTEST_READY`) is **documented, configured, and validated against PR #1** before another human playtest is scheduled.
 
 ## Current blockers
 
-Orchestrator instructions and subagent delegation paths are not yet validated end-to-end against PR #1.
+Orchestrator instructions and subagent delegation paths are not yet validated end-to-end against PR #1. Next validation must confirm the Cloud run for `pre-playtest-reviewer` actually used `kimi-k3-high` rather than silently falling back.
 
 ## Next checkpoint
 
-Update the external Grok automation to the orchestrator role and validate the full chain against PR #1.
+Update the external Grok automation to the orchestrator role and validate the full chain against PR #1, including final-reviewer model binding.

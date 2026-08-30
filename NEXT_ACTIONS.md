@@ -12,11 +12,11 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 Complete in roughly this order:
 
 1. **Land orchestrator/subagent architecture** — `docs/AUTOMATION_PROTOCOL.md`, `.cursor/agents/implementation-worker.md`, `.cursor/agents/pre-playtest-reviewer.md`, handoff/runtime updates.
-2. **Edit existing `QF — Grok Milestone Reviewer` automation** — update instructions so it becomes the **milestone orchestrator** (review, delegate fixes, wait for CI, invoke Sol subagent, post `QF_*` markers).
+2. **Edit existing `QF — Grok Milestone Reviewer` automation** — update instructions so it becomes the **milestone orchestrator** (review, delegate fixes, wait for CI, invoke `pre-playtest-reviewer`, post `QF_*` markers).
 3. **Validate Grok → Composer fix path on PR #1** — if a P0/P1 exists, confirm orchestrator delegates to `implementation-worker` and fixes land on the same branch.
-4. **Validate Grok → CI → Sol path on PR #1** — confirm exact-head CI gates `pre-playtest-reviewer` invocation.
-5. **Verify actual subagent model usage** — Composer is non-Fast (`composer-2.5[fast=false]`); Sol uses the intended model/effort (`gpt-5.6-sol[effort=medium,fast=false]`) rather than silently falling back.
-6. **Only then allow `QF_PLAYTEST_READY`** — orchestrator posts certification only after Grok PASS + CI green + `pre-playtest-reviewer` PASS.
+4. **Validate Grok → CI → final-review path on PR #1** — confirm exact-head CI gates `pre-playtest-reviewer` invocation.
+5. **Verify actual subagent model usage** — Composer is non-Fast (`composer-2.5[fast=false]`); `pre-playtest-reviewer` uses `kimi-k3-high` rather than silently falling back.
+6. **Only then allow `QF_PLAYTEST_READY`** — orchestrator posts certification only after Grok PASS + CI green + independent final reviewer PASS (`QF_FINAL_STATUS: PASS`).
 7. **Human playtest** — only when `QF_PLAYTEST_READY` exists for the exact head (see P1 below).
 8. **Configure post-merge next-milestone automation** — after the current milestone gate is proven.
 

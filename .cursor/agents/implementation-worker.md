@@ -95,4 +95,4 @@ BLOCKED_PRODUCT_DECISION
 FAILED_VERIFICATION
 ```
 
-Do **not** emit `QF_GROK_*`, `QF_SOL_*`, or `QF_PLAYTEST_READY` markers. The parent orchestrator owns PR comments and certification.
+Do **not** emit `QF_GROK_*`, `QF_FINAL_*`, or `QF_PLAYTEST_READY` markers. The parent orchestrator owns PR comments and certification.
