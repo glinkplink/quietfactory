@@ -145,14 +145,32 @@ Architecture escalation is **advisory/read-only** unless explicitly authorized o
 
 ### Grok 4.6 High — independent PR reviewer
 
-Run on **meaningful PR heads** for gameplay/product milestone PRs.
+Top-level Cursor automation: **QF — Grok Milestone Reviewer**.
+
+Canonical UI settings and paste-ready prompt: `docs/QF_GROK_MILESTONE_REVIEWER.md`.
+Canonical review rubric: `.cursor/BUGBOT.md`.
+
+This is **not** a nested repo subagent. Do **not** add `.cursor/agents/` for PR review.
+
+**Triggers (when configured):** draft PR opened; PR opened / marked ready; PR pushed.
+**Model:** Grok 4.6 High, standard / non-fast. **Tool:** comment on pull request only.
+
+**Classify first.** Docs-only, CI-only, automation-only, tooling-only, or otherwise
+non-gameplay PRs must **not** emit `QF_GROK_*` and must not trigger downstream playtest
+gates.
+
+Run a full review only on **gameplay/product playtest milestone** PRs.
 
 **Responsibilities:**
 
 - review the **complete PR against `main`**, not only the latest commit
 - enforce product/mechanics canon
 - detect P0/P1 blockers
+- never edit files, push commits, or open another PR
 - examine architecture, gameplay correctness, UI/model state synchronization, tests, solvability, restart behavior, animation locks, scope drift, and related concerns
+- re-check prior P0/P1 findings on the current head
+- if zero P0/P1, wait for exact-head GitHub `iOS CI`; CI failure is P1; if the head
+  changed while waiting, stop without certifying
 
 **Review classification:**
 
@@ -177,9 +195,10 @@ QF_GROK_HEAD: <sha>
 QF_GROK_STATUS: BLOCKED
 ```
 
-**PASS** means no P0/P1 findings.
+**PASS** means zero P0/P1 findings **plus** successful exact-head `iOS CI`.
 
 See `.cursor/BUGBOT.md` for the canonical review rubric.
+See `docs/QF_GROK_MILESTONE_REVIEWER.md` to save/enable the Cursor automation.
 
 ---
 
@@ -391,7 +410,7 @@ Preserve all existing Quiet Factory constraints from `AGENT_HANDOFF.md` and `DEC
 |-----------|--------|
 | This protocol document | **Documented** |
 | `architecture-escalator` project subagent (`.cursor/agents/`) | **Documented** — read-only Grok 4.6 |
-| Grok PR reviewer automation | **Planned** — not yet configured |
+| Grok PR reviewer automation | **Spec ready** — save/enable `QF — Grok Milestone Reviewer` in the Cursor Automations UI (`docs/QF_GROK_MILESTONE_REVIEWER.md`). Not live until that save. |
 | Composer review-fixer automation | **Planned** — not yet configured |
 | Sol pre-playtest gate | **Planned** — not yet configured |
 | Playtest-fail fixer | **Planned** — not yet configured |

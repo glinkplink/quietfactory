@@ -11,17 +11,16 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 Complete in roughly this order:
 
-1. **Finish automation protocol/docs** — `docs/AUTOMATION_PROTOCOL.md`, `.cursor/BUGBOT.md`, handoff/runtime updates.
-2. **Add project subagents** — currently only `architecture-escalator` (read-only Grok 4.6). Grok PR reviewer and Sol gates are top-level Cloud Agent automations, not nested repo subagents.
-3. **Configure Grok PR reviewer statuses** — full-PR review against `main`; emit `QF_GROK_HEAD` / `QF_GROK_STATUS`.
-4. **Add Composer review-fixer automation** — fix P0/P1 on same PR branch; no replacement PRs.
-5. **Add Sol pre-playtest gate** — run only after CI green + Grok PASS; emit `QF_SOL_*` and `QF_PLAYTEST_READY`.
-6. **Add playtest-fail fixer** — on `PLAYTEST: FAIL`, fix on same milestone PR and re-run machine gates.
-7. **Add post-merge next-milestone automation** — after manual merge, branch fresh from `main` and open next draft PR.
-8. **Validate the automation chain against current PR #1** — end-to-end dry run without consuming human playtest time.
-9. **Only after the chain works**, decide whether PR #1 qualifies for another human playtest.
+1. **Save/enable Grok PR reviewer in Cursor Automations UI** — paste `docs/QF_GROK_MILESTONE_REVIEWER.md`. Turn **Open pull request** off. Then disable precursor Independent PR Reviewer so PRs are not double-reviewed.
+2. **Validate Grok statuses on a gameplay milestone** — full-PR review against `main`; emit `QF_GROK_HEAD` / `QF_GROK_STATUS` only for gameplay/product milestones (this docs PR must not emit them).
+3. **Add Composer review-fixer automation** — fix P0/P1 on same PR branch; no replacement PRs.
+4. **Add Sol pre-playtest gate** — run only after CI green + Grok PASS; emit `QF_SOL_*` and `QF_PLAYTEST_READY`.
+5. **Add playtest-fail fixer** — on `PLAYTEST: FAIL`, fix on same milestone PR and re-run machine gates.
+6. **Add post-merge next-milestone automation** — after manual merge, branch fresh from `main` and open next draft PR.
+7. **Validate the automation chain against current PR #1** — end-to-end dry run without consuming human playtest time.
+8. **Only after the chain works**, decide whether PR #1 qualifies for another human playtest.
 
-Do not claim automation is active until step 8 passes.
+Do not claim automation is active until step 7 passes.
 
 ---
 

@@ -36,7 +36,7 @@ Do **not** start new gameplay changes on `main` during this pass.
 | `docs/AUTOMATION_PROTOCOL.md` | **Documented** |
 | `.cursor/BUGBOT.md` review rubric | **Documented** |
 | `architecture-escalator` project subagent (`.cursor/agents/`) | **Documented** — read-only Grok 4.6; not configured as automation |
-| Grok PR reviewer automation | **Planned** — not configured |
+| Grok PR reviewer automation | **Spec ready** — paste/save `QF — Grok Milestone Reviewer` in Cursor Automations UI (`docs/QF_GROK_MILESTONE_REVIEWER.md`). Not live until enabled. Precursor Independent PR Reviewer still emits `REVIEW_STATUS`, not `QF_GROK_*`. |
 | Composer review-fixer automation | **Planned** — not configured |
 | Sol pre-playtest gate | **Planned** — not configured |
 | Playtest-fail fixer | **Planned** — not configured |
@@ -65,7 +65,7 @@ The automation chain (CI → Grok review → Composer fixes → Sol gate → pla
 
 ## Current blockers
 
-None for documentation. Automation components listed above are not yet implemented.
+Grok reviewer Cursor automation is specified but not yet saved/enabled in the Automations UI. Cloud sessions cannot open Glass to create it. Remaining pipeline automations (Composer fixer, Sol gate, playtest-fail fixer, post-merge) are still unconfigured.
 
 ## Next checkpoint
 
