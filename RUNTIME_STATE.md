@@ -28,12 +28,13 @@ Do **not** start new gameplay changes on `main` during this pass.
 - Deterministic `GameCore` + `GameEngine` (SpriteKit-independent)
 - Gray-box portrait UI with corrected grid Y-axis (model north = visual up), explicit SpriteKit zPosition layering for crates over grid cells
 - `isStuck` covers empty-conveyor deadlocks via dedicated test fixture
-- 13 hand-authored levels; all verified solvable via test-only `LevelSolver` in CI
+- 13 hand-authored levels; all verified solvable via test-only `LevelSolver` in CI (plus explicit unsolvable fixture negative test)
 - `onb-3` teaches blocked-path release order (starts `.playing`, blocked crate gives feedback)
 - `hard-1` combines spatial column blocking with interleaved conveyor sequencing
 - Win overlay rests ~1s before auto-advance; stale auto-advance cancelled on restart/level change; stuck overlay copy is location-neutral
-- `GameEngineTests` + catalog solvability tests
-- **GitHub iOS CI passing** on the latest implementation tree; PR checks are authoritative for the exact SHA
+- **P1 pre-playtest fixes (same PR):** board tap hit-testing rejects off-board taps; release presentation trace (slide → land → readable match → clear) with atomic `GameEngine.apply`; unsolvable `LevelSolver` fixture; `QuietFactoryUITests` launch smoke + `GameScene` zPosition unit test
+- `GameEngineTests` + catalog solvability tests + presentation-trace tests
+- **GitHub iOS CI** is authoritative for the exact SHA; local Linux cannot run `xcodebuild`
 - iOS CI publishes a downloadable `QuietFactory-Simulator-<sha>` zip (7-day retention) for Appetize.io browser playtest without a Mac
 
 ### Automation
@@ -55,6 +56,7 @@ No additional automation components are planned. The locked two-automation archi
 ### Human playtest
 
 - Human playtest is **intentionally deferred** until the orchestrator chain is validated and posts `QF_PLAYTEST_READY` for an exact head.
+- The four machine-detectable P1 items (board hit-testing, release presentation trace, unsolvable solver fixture, UI/smoke tests) are implemented on this PR; they do **not** authorize playtest by themselves.
 - Appetize time is scarce (~30 free minutes total); do not consume it for routine validation.
 - A green CI run or informal review alone does **not** authorize human playtesting.
 
@@ -75,7 +77,7 @@ The orchestrator chain (Grok review → `implementation-worker` fixes if needed 
 
 ## Current blockers
 
-Setup is complete. Remaining work is production end-to-end validation of the enabled orchestrator against PR #1. Exact runtime child model identity cannot be observed because Cursor does not expose child `originalModelName`.
+Setup is complete. P1 machine-detectable pre-playtest fixes are implemented on PR #1; remaining work is orchestrator validation (Grok → CI → pre-playtest-reviewer → `QF_PLAYTEST_READY`) before human playtest.
 
 ## Next checkpoint
 

@@ -9,7 +9,9 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 ## P0 — Validate PR #1 orchestrator chain
 
-Automation protocol/docs are locked. Custom routing smoke tests passed for `implementation-worker` and `pre-playtest-reviewer` (discovered and invoked; no routing/fallback warnings). Cursor does not expose child `originalModelName`, so exact runtime child model identity cannot be directly observed. `QF — Milestone Orchestrator` is enabled. `QF — Next Milestone Starter` remains disabled until PR #1 is ready to lead into the next milestone.
+Automation protocol/docs are locked. Custom routing smoke tests passed for `implementation-worker` and `pre-playtest-reviewer`. `QF — Milestone Orchestrator` is enabled. `QF — Next Milestone Starter` remains disabled until PR #1 is ready to lead into the next milestone.
+
+**P1 machine-detectable fixes (board hit-testing, release presentation trace, unsolvable solver fixture, UI/smoke tests) are implemented on the same PR.** Human playtest remains gated on `QF_PLAYTEST_READY`.
 
 Complete in roughly this order:
 
