@@ -12,7 +12,7 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 Complete in roughly this order:
 
 1. **Finish automation protocol/docs** — `docs/AUTOMATION_PROTOCOL.md`, `.cursor/BUGBOT.md`, handoff/runtime updates.
-2. **Add project subagents** — Composer implementation, Grok reviewer, Sol gate, fixers per protocol.
+2. **Add project subagents** — currently only `architecture-escalator` (read-only Grok 4.6). Grok PR reviewer and Sol gates are top-level Cloud Agent automations, not nested repo subagents.
 3. **Configure Grok PR reviewer statuses** — full-PR review against `main`; emit `QF_GROK_HEAD` / `QF_GROK_STATUS`.
 4. **Add Composer review-fixer automation** — fix P0/P1 on same PR branch; no replacement PRs.
 5. **Add Sol pre-playtest gate** — run only after CI green + Grok PASS; emit `QF_SOL_*` and `QF_PLAYTEST_READY`.
