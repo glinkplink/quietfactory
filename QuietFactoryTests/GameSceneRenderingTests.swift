@@ -5,7 +5,9 @@ import XCTest
 final class GameSceneRenderingTests: XCTestCase {
     func testOnb1BoardCratesRenderAboveGridCells() {
         let session = GameSession(level: LevelCatalog.onboarding[0])
-        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let scene = GameScene(size: view.bounds.size)
+        view.presentScene(scene)
         scene.attach(session: session)
 
         let gridCells = collectDescendants(of: scene, named: "gridCell")

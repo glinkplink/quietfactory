@@ -44,7 +44,7 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "890123456789012345AB012"
+               BlueprintIdentifier = "A890123456789012345AB012"
                BuildableName = "QuietFactoryUITests.xctest"
                BlueprintName = "QuietFactoryUITests"
                ReferencedContainer = "container:QuietFactory.xcodeproj">
