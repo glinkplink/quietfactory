@@ -423,27 +423,25 @@ final class GameEngineTests: XCTestCase {
         let level = LevelDefinition(
             id: "test-session-trace",
             name: "Session Trace",
-            width: 3,
-            height: 5,
+            width: 5,
+            height: 3,
             crates: [
-                CrateDefinition(x: 1, y: 0, direction: .north, color: .red),
-                CrateDefinition(x: 1, y: 2, direction: .north, color: .red),
-                CrateDefinition(x: 1, y: 4, direction: .north, color: .red)
+                CrateDefinition(x: 0, y: 2, direction: .north, color: .red),
+                CrateDefinition(x: 2, y: 2, direction: .north, color: .red),
+                CrateDefinition(x: 4, y: 2, direction: .north, color: .red)
             ],
             matchSize: 3,
             conveyorCapacity: 5,
             category: .normal
         )
         let session = GameSession(level: level)
+        let releaseOrder = session.state.board.crates.values
+            .map(\.id)
+            .sorted { $0.rawValue < $1.rawValue }
 
-        let bottomID = session.state.board.crates.values.first { $0.position.y == 4 }!.id
-        _ = session.attemptRelease(crateID: bottomID)
-
-        let middleID = session.state.board.crates.values.first { $0.position.y == 2 }!.id
-        _ = session.attemptRelease(crateID: middleID)
-
-        let topID = session.state.board.crates.values.first { $0.position.y == 0 }!.id
-        let result = session.attemptRelease(crateID: topID)
+        _ = session.attemptRelease(crateID: releaseOrder[0])
+        _ = session.attemptRelease(crateID: releaseOrder[1])
+        let result = session.attemptRelease(crateID: releaseOrder[2])
 
         guard case .released(_, let cleared, let status, let presentation) = result else {
             return XCTFail("Expected released result")
