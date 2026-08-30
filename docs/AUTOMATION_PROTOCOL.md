@@ -89,6 +89,22 @@ Infrastructure, automation, CI, docs, and tooling PRs **do not automatically tri
 
 ## B. Model roles
 
+### Project subagents vs top-level Cloud Agent automations
+
+Keep the repo-level subagent surface **minimal**.
+
+| Role | Where it lives |
+|------|----------------|
+| Implementation-time architecture escalation | **Project subagent:** `.cursor/agents/architecture-escalator.md` (read-only Grok 4.6) |
+| PR review | **Top-level Cloud Agent automation** (Grok) — not a nested repo subagent |
+| Sol pre-playtest gate | **Top-level Cloud Agent automation** — not a nested repo subagent |
+| Sol dispute adjudication | **Top-level Cloud Agent automation** — not a nested repo subagent |
+| Normal implementation | **Composer** via the implementation Cloud Agent — not a separate repo subagent |
+
+Composer may invoke `architecture-escalator` **only** under the documented escalation conditions below. Composer must **not** invoke Sol directly.
+
+---
+
 ### Composer 2.5 — primary implementation worker
 
 **Use for:**
@@ -107,13 +123,21 @@ Composer should perform the **majority of coding work**.
 
 ### Grok 4.6 High — architecture escalation
 
-**Use only when:**
+Implementation-time architecture escalation uses the read-only project subagent:
+
+- **Path:** `.cursor/agents/architecture-escalator.md`
+- **Model:** `grok-4.6`
+- **Mode:** `readonly: true` — advisory only; does not edit files
+
+Composer may invoke `architecture-escalator` **only when**:
 
 - gameplay semantics must change
 - GameCore/UI ownership boundaries are unclear or must change
 - SpriteKit/model synchronization requires architectural judgment
 - there are materially different architectural choices with different long-term consequences
 - the same defect has resisted **two** Composer implementation attempts
+
+Do **not** escalate for ordinary implementation, straightforward fixes, routine tests, docs, small UI polish, or mechanical refactors with an obvious correct approach.
 
 Architecture escalation is **advisory/read-only** unless explicitly authorized otherwise.
 
@@ -163,6 +187,10 @@ See `.cursor/BUGBOT.md` for the canonical review rubric.
 
 **Expensive model. Do not use continuously.**
 
+Will be configured later as a **top-level Cloud Agent automation** for the final pre-playtest gate.
+
+It is **NOT** an implementation-time subagent available to Composer. Do **not** add `.cursor/agents/` definitions for Sol. Every Sol invocation must be deliberate, auditable, and triggered by the automation gate — not by nested subagent delegation.
+
 Run **only after:**
 
 1. `iOS CI` succeeds on the current PR head
@@ -201,7 +229,11 @@ QF_PLAYTEST_READY: <sha>
 
 **Use only when a genuine technical disagreement cannot be resolved normally.**
 
-Do **not** use as a routine reviewer.
+Will be used only through a separate, explicitly invoked **top-level Cloud Agent adjudication path** if a genuine technical dispute survives normal review/fix cycles.
+
+It is **NOT** a nested repo subagent. Do **not** create `.cursor/agents/final-adjudicator.md` or any other Sol project subagent.
+
+Do **not** use as a routine reviewer. Implementation agents must **not** invoke Sol directly.
 
 Feed it only:
 
@@ -224,7 +256,7 @@ Do **not** use reviewer "voting." A credible P0/P1 blocks until resolved or expl
 
 ### Composer should not escalate merely because a task is difficult
 
-Escalate to **Grok architecture review** when:
+Escalate to the **`architecture-escalator`** project subagent (Grok architecture review) when:
 
 1. gameplay semantics must change
 2. GameCore vs UI ownership is unclear
@@ -358,6 +390,7 @@ Preserve all existing Quiet Factory constraints from `AGENT_HANDOFF.md` and `DEC
 | Component | Status |
 |-----------|--------|
 | This protocol document | **Documented** |
+| `architecture-escalator` project subagent (`.cursor/agents/`) | **Documented** — read-only Grok 4.6 |
 | Grok PR reviewer automation | **Planned** — not yet configured |
 | Composer review-fixer automation | **Planned** — not yet configured |
 | Sol pre-playtest gate | **Planned** — not yet configured |

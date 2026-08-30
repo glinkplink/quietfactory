@@ -33,8 +33,9 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 | Item | Status |
 |------|--------|
-| `docs/AUTOMATION_PROTOCOL.md` | **Documented** (this pass) |
-| `.cursor/BUGBOT.md` review rubric | **Documented** (this pass) |
+| `docs/AUTOMATION_PROTOCOL.md` | **Documented** |
+| `.cursor/BUGBOT.md` review rubric | **Documented** |
+| `architecture-escalator` project subagent (`.cursor/agents/`) | **Documented** — read-only Grok 4.6; not configured as automation |
 | Grok PR reviewer automation | **Planned** — not configured |
 | Composer review-fixer automation | **Planned** — not configured |
 | Sol pre-playtest gate | **Planned** — not configured |
