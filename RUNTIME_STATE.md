@@ -15,7 +15,7 @@ Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machi
 
 ## Current objective
 
-End-to-end validation of the actual PR #1 orchestrator chain.
+PR #7 (Kimi cost-discipline + final-review provenance) is merged to `main` and is being synced into PR #1. Then re-validate the orchestrator chain. Do **not** claim the overall automation chain is validated.
 
 Do **not** start new gameplay changes on `main` during this pass.
 
@@ -41,28 +41,47 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 | Item | Status |
 |------|--------|
-| `docs/AUTOMATION_PROTOCOL.md` | **Locked** |
+| `docs/AUTOMATION_PROTOCOL.md` | **Locked** + PR #7 cost/provenance correction merged to `main` |
 | `.cursor/BUGBOT.md` review rubric | **Locked** |
 | `architecture-escalator` project subagent | **Documented** |
-| `implementation-worker` project subagent | **Documented** — custom routing smoke test **passed** (discovered and invoked) |
-| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; custom routing smoke test **passed** (discovered and invoked) |
-| Child model identity | Cursor does **not** expose child `originalModelName`; exact runtime child model identity cannot be directly observed |
-| Routing/fallback warnings | **None** during smoke tests |
-| `QF — Milestone Orchestrator` | **Configured externally** — **ENABLED** |
-| `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** until PR #1 is ready to lead into the next milestone |
+| `implementation-worker` project subagent | **Documented** |
+| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; cost-disciplined prompt + child-result contract from PR #7 |
+| `QF — Milestone Orchestrator` | **Configured externally** — **DISABLED** until this `main` sync is on PR #1 |
+| `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** |
 
 No additional automation components are planned. The locked two-automation architecture is unchanged.
 
+### Empirical validation — two separate failures
+
+#### 1. Routing/model smoke (cost)
+
+- Kimi K3 High **routing/model binding was observed to work** during an earlier smoke/final-review attempt.
+- That attempted final-review run was operationally too expensive, consuming roughly **~2% observed usage**.
+- Treat ~2% as an **observed operational fact**, not an estimated token count.
+- Therefore: **model routing passed**; **reviewer cost discipline is NOT yet validated**.
+- Cost-disciplined prompt/docs from PR #7 address that defect.
+
+#### 2. End-to-end orchestrator provenance (PR #1 head `abb46647…`)
+
+- PR #1 head `abb46647f2e18de8f55ee909c6ad846f54eb19ac` reached exact-head CI PASS.
+- The orchestrator posted `QF_GROK_STATUS: PASS`, `QF_FINAL_STATUS: PASS`, and `QF_PLAYTEST_READY` for that SHA, describing an “independent final reviewer” pass.
+- Final-review **provenance was not adequately established** (insufficient evidence that the configured `pre-playtest-reviewer` Kimi child was actually invoked and returned that result).
+- Do **not** claim definitively that Cursor never launched a child if execution telemetry cannot prove that negative. The defect is that the orchestrator was permitted to certify PASS without possessing/verifying child-result provenance.
+- Therefore this does **NOT** count as successful end-to-end Kimi final-gate validation.
+- `QF_PLAYTEST_READY` on that SHA is **INVALID / stale for automation-validation purposes**. Do not rewrite or delete the historical GitHub marker merely to hide the failed validation; treat it as invalid/stale for protocol purposes.
+- Human playtest remains **blocked / deferred**.
+
 ### Human playtest
 
-- Human playtest is **intentionally deferred** until the orchestrator chain is validated and posts `QF_PLAYTEST_READY` for an exact head.
+- Human playtest remains **intentionally deferred** until a provenance-backed `QF_PLAYTEST_READY` exists for a fresh exact head after cost-disciplined Kimi validation.
 - The four machine-detectable P1 items (board hit-testing, release presentation trace, unsolvable solver fixture, UI/smoke tests) are implemented on this PR; they do **not** authorize playtest by themselves.
 - Appetize time is scarce (~30 free minutes total); do not consume it for routine validation.
-- A green CI run or informal review alone does **not** authorize human playtesting.
+- A green CI run, Grok PASS, or a parent comment alone does **not** authorize human playtesting.
+- Seeing `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` in a parent comment is **not itself evidence** that the independent reviewer executed.
 
 ## Active scope
 
-- End-to-end validation of the actual PR #1 orchestrator chain
+- Sync PR #7 (`main`) into PR #1, then one fresh exact-head orchestrator chain with observed `pre-playtest-reviewer` child delegation
 - PR #1 remains open as the gray-box milestone (fixes via same PR only)
 
 ## Not active yet
@@ -70,22 +89,24 @@ No additional automation components are planned. The locked two-automation archi
 - New gameplay features beyond PR #1 milestone scope
 - Campaign, generator, solver production pipeline, daily puzzle, undo, final art, App Store
 - Procedural generation (blocked until gray-box loop passes human validation)
+- Re-enabling `QF — Milestone Orchestrator` (blocked until this sync is on PR #1)
 
 ## Immediate success criterion
 
-The orchestrator chain (Grok review → `implementation-worker` fixes if needed → exact-head CI → independent `pre-playtest-reviewer` → `QF_PLAYTEST_READY`) is **validated against PR #1** before human playtest or enabling `QF — Next Milestone Starter`.
+Corrective docs are on `main` (PR #7) → synced into PR #1 → one fresh exact-head chain with observed `pre-playtest-reviewer` child delegation, validated child contract, cost-disciplined prompt in use, and provenance-backed certification — **before** human playtest or enabling `QF — Next Milestone Starter`.
 
 ## Current blockers
 
-Setup is complete. P1 machine-detectable pre-playtest fixes are implemented on PR #1; remaining work is orchestrator validation (Grok → CI → pre-playtest-reviewer → `QF_PLAYTEST_READY`) before human playtest.
+- Orchestrator **DISABLED** until this sync is present on PR #1.
+- Cost discipline not yet validated on a production candidate.
+- Final-review provenance rule not yet validated end-to-end.
+- Stale/invalid `QF_PLAYTEST_READY` on `abb46647…` must not be treated as playtest authorization.
 
 ## Next checkpoint
 
-1. Push this synced PR #1 head (triggers `QF — Milestone Orchestrator`).
-2. Validate Grok exact-head review.
-3. If Grok finds P0/P1, validate delegation to `implementation-worker` and same-PR fix loop.
-4. Validate exact-head iOS CI handling.
-5. Validate final `pre-playtest-reviewer` invocation.
-6. Confirm `QF_GROK_HEAD`, `QF_GROK_STATUS`, `QF_FINAL_HEAD`, `QF_FINAL_STATUS`, and `QF_PLAYTEST_READY` all refer to the same exact head.
-7. Only then perform human Appetize playtest.
-8. On successful human playtest, prepare for manual PR #1 merge and enable `QF — Next Milestone Starter`.
+1. Sync/merge latest `main` (PR #7) into PR #1 (`agent/mvp-nightly`) — **this step**.
+2. Only then re-enable **only** `QF — Milestone Orchestrator`.
+3. Produce one new PR #1 head/push.
+4. Validate the exact-head chain including observed child delegation and provenance.
+5. Keep `QF — Next Milestone Starter` disabled.
+6. Only after provenance-backed `QF_PLAYTEST_READY` may human playtest proceed.

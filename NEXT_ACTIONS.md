@@ -7,24 +7,39 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 ---
 
-## P0 — Validate PR #1 orchestrator chain
+## P0 — Sync PR #7 into PR #1, then re-validate orchestrator chain
 
-Automation protocol/docs are locked. Custom routing smoke tests passed for `implementation-worker` and `pre-playtest-reviewer`. `QF — Milestone Orchestrator` is enabled. `QF — Next Milestone Starter` remains disabled until PR #1 is ready to lead into the next milestone.
+`QF — Milestone Orchestrator` is **DISABLED**. Keep it disabled until this `main` sync is on PR #1. `QF — Next Milestone Starter` remains **DISABLED**.
 
-**P1 machine-detectable fixes (board hit-testing, release presentation trace, unsolvable solver fixture, UI/smoke tests) are implemented on the same PR.** Human playtest remains gated on `QF_PLAYTEST_READY`.
+Seeing `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` in a parent comment is **not itself evidence** that the independent reviewer executed.
 
-Complete in roughly this order:
+**P1 machine-detectable fixes** (board hit-testing, release presentation trace, unsolvable solver fixture, UI/smoke tests) are implemented on the same PR. Human playtest remains gated on provenance-backed `QF_PLAYTEST_READY`.
 
-1. **Push this synced PR #1 head** (`agent/mvp-nightly`) so enabled `QF — Milestone Orchestrator` receives a real PR-pushed event.
-2. **Validate exact-head Grok review** — confirm `QF_GROK_HEAD` / `QF_GROK_STATUS` on the new SHA.
-3. **If Grok finds P0/P1**, validate delegation to `implementation-worker` and the same-PR fix loop.
-4. **Validate exact-head iOS CI handling** — orchestrator waits for green CI before final review.
-5. **Validate final `pre-playtest-reviewer` invocation**.
-6. **Confirm exact-head certification** — `QF_GROK_HEAD`, `QF_GROK_STATUS`, `QF_FINAL_HEAD`, `QF_FINAL_STATUS`, and `QF_PLAYTEST_READY` all refer to the same exact head.
-7. **Only then consume human Appetize time** (see P1 below).
-8. **On successful human playtest**, prepare for manual PR #1 merge and enable `QF — Next Milestone Starter`.
+Complete in this order:
 
-Do not claim automation is validated until steps 2–6 pass.
+1. **Merge corrective docs/rules PR #7** into `main` — **done** (`bf302ad`).
+2. **Sync latest `main` into PR #1** (`agent/mvp-nightly`) — **this step**. Required: the orchestrator reads `.cursor/agents/pre-playtest-reviewer.md` from the candidate branch.
+3. **Keep orchestrator disabled** until that sync is present on PR #1.
+4. **Enable only `QF — Milestone Orchestrator`** — leave Next Milestone Starter disabled.
+5. **Produce exactly one fresh PR #1 candidate head** (one push **after** enable).
+6. **Verify exact-head Grok PASS** (`QF_GROK_HEAD` / `QF_GROK_STATUS` for the new SHA).
+7. **Verify exact-head iOS CI** green for that SHA.
+8. **Observe an actual `pre-playtest-reviewer` child delegation** (named Task/subagent invoke — not parent self-review).
+9. **Verify returned child contract:**
+   - `REVIEWER_ROLE: pre-playtest-reviewer`
+   - `REVIEWED_HEAD` matches candidate
+   - `ROUTING_OK: true`
+   - required review sections present
+   - `RESULT` exactly `PASS` or `BLOCKED`
+10. **Only after that child result** may `QF_FINAL_*` appear; only after actual child `PASS` may `QF_PLAYTEST_READY` appear.
+11. **Confirm the new cost-disciplined prompt is actually being used** (post-sync branch content) and inspect Kimi usage after that one run for cost validation (observed usage only — no invented token counts).
+12. **Confirm Automation MCP/tool config** remains Comment on PR only (already manually checked; re-verify checkbox only — do not rebuild).
+13. **Only then** human Appetize playtest (P1).
+14. Keep **Next Milestone Starter disabled**.
+
+Treat any prior `QF_PLAYTEST_READY` for `abb46647…` as **invalid for automation-validation purposes**.
+
+Do not claim automation is validated until steps 6–11 pass with provenance.
 
 ---
 
@@ -32,7 +47,7 @@ Do not claim automation is validated until steps 2–6 pass.
 
 ### Human playtest gray-box MVP (PR #1)
 
-Only when PR #1 head has `QF_PLAYTEST_READY` for that exact SHA:
+Only when PR #1 head has provenance-backed `QF_PLAYTEST_READY` for that exact SHA:
 
 - Define a predefined human question before opening Appetize (see `docs/AUTOMATION_PROTOCOL.md` § E).
 - **Without a Mac:** download `QuietFactory-Simulator-<sha>` from the green iOS CI run on GitHub Actions, upload the zip to [Appetize.io](https://appetize.io), and play in the browser
