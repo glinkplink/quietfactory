@@ -7,9 +7,9 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 ---
 
-## P0 — Sync PR #7 into PR #1, then re-validate orchestrator chain
+## P0 — Re-validate orchestrator chain on post-enable PR #1 head
 
-`QF — Milestone Orchestrator` is **DISABLED**. Keep it disabled until this `main` sync is on PR #1. `QF — Next Milestone Starter` remains **DISABLED**.
+`QF — Milestone Orchestrator` is **ENABLED**. `QF — Next Milestone Starter` remains **DISABLED**.
 
 Seeing `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` in a parent comment is **not itself evidence** that the independent reviewer executed.
 
@@ -18,10 +18,10 @@ Seeing `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` in a parent comment is **not its
 Complete in this order:
 
 1. **Merge corrective docs/rules PR #7** into `main` — **done** (`bf302ad`).
-2. **Sync latest `main` into PR #1** (`agent/mvp-nightly`) — **this step**. Required: the orchestrator reads `.cursor/agents/pre-playtest-reviewer.md` from the candidate branch.
-3. **Keep orchestrator disabled** until that sync is present on PR #1.
-4. **Enable only `QF — Milestone Orchestrator`** — leave Next Milestone Starter disabled.
-5. **Produce exactly one fresh PR #1 candidate head** (one push **after** enable).
+2. **Sync latest `main` into PR #1** (`agent/mvp-nightly`) — **done** (`b74d386`).
+3. **Keep orchestrator disabled** until that sync is present on PR #1 — **done**.
+4. **Enable only `QF — Milestone Orchestrator`** — **done**. Leave Next Milestone Starter disabled.
+5. **Produce exactly one fresh PR #1 candidate head** (one push **after** enable) — **this commit**.
 6. **Verify exact-head Grok PASS** (`QF_GROK_HEAD` / `QF_GROK_STATUS` for the new SHA).
 7. **Verify exact-head iOS CI** green for that SHA.
 8. **Observe an actual `pre-playtest-reviewer` child delegation** (named Task/subagent invoke — not parent self-review).

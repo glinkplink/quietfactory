@@ -15,7 +15,7 @@ Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machi
 
 ## Current objective
 
-PR #7 (Kimi cost-discipline + final-review provenance) is merged to `main` and is being synced into PR #1. Then re-validate the orchestrator chain. Do **not** claim the overall automation chain is validated.
+PR #7 is on `main` and synced into PR #1. `QF — Milestone Orchestrator` is **ENABLED**. This head is the one post-enable candidate for re-validating the orchestrator chain. Do **not** claim the overall automation chain is validated until observed child provenance exists.
 
 Do **not** start new gameplay changes on `main` during this pass.
 
@@ -46,7 +46,7 @@ Do **not** start new gameplay changes on `main` during this pass.
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
 | `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; cost-disciplined prompt + child-result contract from PR #7 |
-| `QF — Milestone Orchestrator` | **Configured externally** — **DISABLED** until this `main` sync is on PR #1 |
+| `QF — Milestone Orchestrator` | **Configured externally** — **ENABLED** (post-sync validation run) |
 | `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** |
 
 No additional automation components are planned. The locked two-automation architecture is unchanged.
@@ -81,7 +81,7 @@ No additional automation components are planned. The locked two-automation archi
 
 ## Active scope
 
-- Sync PR #7 (`main`) into PR #1, then one fresh exact-head orchestrator chain with observed `pre-playtest-reviewer` child delegation
+- One fresh exact-head orchestrator chain with observed `pre-playtest-reviewer` child delegation (post-enable candidate)
 - PR #1 remains open as the gray-box milestone (fixes via same PR only)
 
 ## Not active yet
@@ -89,7 +89,7 @@ No additional automation components are planned. The locked two-automation archi
 - New gameplay features beyond PR #1 milestone scope
 - Campaign, generator, solver production pipeline, daily puzzle, undo, final art, App Store
 - Procedural generation (blocked until gray-box loop passes human validation)
-- Re-enabling `QF — Milestone Orchestrator` (blocked until this sync is on PR #1)
+- Re-enabling `QF — Next Milestone Starter` (blocked until provenance-backed playtest PASS and human merge of PR #1)
 
 ## Immediate success criterion
 
@@ -97,16 +97,15 @@ Corrective docs are on `main` (PR #7) → synced into PR #1 → one fresh exact-
 
 ## Current blockers
 
-- Orchestrator **DISABLED** until this sync is present on PR #1.
 - Cost discipline not yet validated on a production candidate.
 - Final-review provenance rule not yet validated end-to-end.
 - Stale/invalid `QF_PLAYTEST_READY` on `abb46647…` must not be treated as playtest authorization.
 
 ## Next checkpoint
 
-1. Sync/merge latest `main` (PR #7) into PR #1 (`agent/mvp-nightly`) — **this step**.
-2. Only then re-enable **only** `QF — Milestone Orchestrator`.
-3. Produce one new PR #1 head/push.
+1. Sync/merge latest `main` (PR #7) into PR #1 — **done** (`b74d386`).
+2. Re-enable **only** `QF — Milestone Orchestrator` — **done**.
+3. Produce one new PR #1 head/push **after** enable — **this commit**.
 4. Validate the exact-head chain including observed child delegation and provenance.
 5. Keep `QF — Next Milestone Starter` disabled.
 6. Only after provenance-backed `QF_PLAYTEST_READY` may human playtest proceed.
