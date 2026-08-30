@@ -50,7 +50,7 @@ Quiet Factory has **exactly two** top-level Cursor Automations. No other top-lev
 
 | Property | Value |
 |----------|-------|
-| Status | **Configured externally** — **DISABLED** pending docs lock / end-to-end validation |
+| Status | **Configured externally** — **DISABLED** while corrective Kimi cost/provenance docs land and are synced into PR #1 |
 | Model | Cursor Grok 4.6 High, non-Fast |
 | Repository | `glinkplink/quietfactory` |
 | Triggers | **Draft opened**, **PR pushed** |
@@ -66,8 +66,8 @@ Quiet Factory has **exactly two** top-level Cursor Automations. No other top-lev
 4. Delegate routine fixes to **`implementation-worker`** on the **same PR branch**.
 5. Delegate architecture questions to **`architecture-escalator`** only when required.
 6. Wait for **exact-head** `iOS CI` before final certification.
-7. Invoke **`pre-playtest-reviewer`** at most **once per eligible candidate SHA**, only after Grok has zero P0/P1 and exact-head CI succeeds.
-8. Translate final-review results into `QF_FINAL_HEAD` / `QF_FINAL_STATUS` and, when appropriate, `QF_PLAYTEST_READY`.
+7. **Actually invoke** the named project subagent **`pre-playtest-reviewer`** (Task/subagent delegation) at most **once per eligible candidate SHA**, only after Grok has zero P0/P1 and exact-head CI succeeds — with a supplied **routing pack** (see below). This is a foreground dependency; wait for the child result.
+8. Translate a **validated child result** into `QF_FINAL_HEAD` / `QF_FINAL_STATUS` and, only after child `RESULT: PASS` with proven provenance, `QF_PLAYTEST_READY`. Never self-certify the Kimi gate.
 9. Wait for human `PLAYTEST: PASS` or `PLAYTEST: FAIL`.
 10. **Never** merge.
 
@@ -180,9 +180,11 @@ Workflow semantics depend on roles, not providers. Changing a model binding does
 | Independent final pre-playtest review | **Project subagent:** `.cursor/agents/pre-playtest-reviewer.md` (read-only) — invoked **only** by the orchestrator |
 | Human playtest | Human — comprehension / feel / fun / frustration / clarity |
 
-**Normal implementation agents must not casually invoke the independent final reviewer.** Only `QF — Milestone Orchestrator` may call `pre-playtest-reviewer`, and only under the cost rule above.
+**Normal implementation agents must not casually invoke the independent final reviewer.** Only `QF — Milestone Orchestrator` may call `pre-playtest-reviewer`, and only under the cost-discipline and provenance rules in the independent final reviewer section below.
 
 Subagents return **structured results to the parent** and must **not** independently post `QF_GROK_*`, `QF_FINAL_*`, or `QF_PLAYTEST_READY` markers.
+
+Seeing `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` in a parent comment is **not itself evidence** that the independent reviewer executed.
 
 ---
 
@@ -198,8 +200,8 @@ The top-level orchestrator runs on **meaningful PR heads** for gameplay/product 
 - examine architecture, gameplay correctness, UI/model state synchronization, tests, solvability, restart behavior, animation locks, scope drift, and related concerns
 - invoke `implementation-worker` for valid P0/P1 fixes
 - invoke `architecture-escalator` only when required
-- invoke `pre-playtest-reviewer` only after Grok PASS + exact-head CI green
-- post all `QF_*` certification markers in PR comments
+- **actually invoke** named `pre-playtest-reviewer` only after Grok PASS + exact-head CI green, with routing pack, and only certify from a validated child result
+- post all `QF_*` certification markers in PR comments — never self-certify the Kimi gate
 
 **Review classification:**
 
@@ -279,7 +281,9 @@ Architecture escalation is **advisory/read-only** unless explicitly authorized o
 
 **Model:** `kimi-k3-high` — read-only
 
-**Expensive final machine gate. Do not use continuously.**
+**Expensive final machine gate.** Runs **at most once per eligible candidate SHA**. Do not use continuously. Do not invent usage, token, dollar-cost, or savings estimates in docs or comments.
+
+Architecture remains: Grok orchestrator → worker/escalator as needed → exact-head CI → **named** Kimi final gate. Do **not** introduce another automation or another reviewer role.
 
 Invoked **only** by `QF — Milestone Orchestrator`, **only after**:
 
@@ -287,38 +291,145 @@ Invoked **only** by `QF — Milestone Orchestrator`, **only after**:
 2. `iOS CI` succeeds on the **exact current head**
 3. the PR is actually a **gameplay/playtest milestone**
 
-The independent final reviewer must:
+#### Must actually invoke the named child
 
-- review the **complete PR against `main`** on its own terms
-- **not** assume Grok is correct merely because Grok passed
-- block only for **P0/P1** machine-detectable issues
-- **not** claim native visual inspection of screenshots (textual evidence only; visual inspection remains the orchestrator's responsibility)
+After exact-head Grok PASS + exact-head CI green, the parent **must explicitly invoke** `pre-playtest-reviewer` as a Cursor project subagent / Task delegation.
 
-**Question it must answer:**
+This is **not optional** and must **not** be treated as a conceptual role the parent may perform itself.
 
-> Is there any material defect, contradiction, missing automated test, or machine-detectable uncertainty that should be resolved BEFORE scarce human playtest time is consumed?
+The parent **MUST NOT**:
 
-The subagent returns `PASS` or `BLOCKED` to the parent. The **orchestrator** translates that into:
+- simulate the final reviewer
+- perform another Grok/self-review and label it “independent”
+- infer final PASS from Grok PASS
+- infer final PASS from green CI
+- infer final PASS from absence of known blockers
+- synthesize what it believes Kimi would have returned
+- emit `QF_FINAL_STATUS: PASS` merely because all earlier gates passed
+
+Grok is the parent/orchestrator. Kimi is the independent final reviewer. Those are deliberately separate model executions.
+
+Green CI + Grok PASS can **never** independently produce `QF_PLAYTEST_READY`.
+
+#### Routing pack required in the parent Task prompt
+
+The parent Task prompt **must** include a routing pack so the child can decide `ROUTING_OK` without repository exploration:
+
+- exact candidate SHA
+- `QF_GROK_HEAD` / `QF_GROK_STATUS` for that SHA
+- exact-head CI run URL/status
+- confirmation that the PR is a gameplay/playtest milestone
+
+If the parent only says “review the PR,” the child correctly returns `ROUTING_OK: false`, or else cheats by reading the repo again. A child contract without a supplied routing pack is incomplete.
+
+#### Cost discipline / review scope
+
+- Route eligibility is checked **before** repository review. Failed routing exits before expensive repo reads/review.
+- Production review scope is the **COMPLETE exact candidate diff against `main`** — the full milestone PR — independently reviewed.
+- That means the full milestone PR diff, **not** a general repository tour.
+- Grok findings must **not** substitute for Kimi independently reviewing that diff. Do not scope the review to Grok’s file list.
+- Use minimal relevant canon/tests/context required by the candidate diff.
+- No recursive subagents, MCP, browser/web search, or unrelated exploration.
+- Do not claim Cursor guarantees literal zero harness/tool overhead on a routing failure; the instruction is to skip the expensive review loop.
+
+#### Child result contract
+
+A valid child result must contain, at minimum near the top:
+
+```
+REVIEWER_ROLE: pre-playtest-reviewer
+REVIEWED_HEAD: <exact SHA>
+ROUTING_OK: true
+```
+
+Then:
+
+```
+PRE-PLAYTEST FINDINGS
+
+AUTOMATION GAPS
+
+HUMAN-ONLY QUESTIONS
+
+RESULT
+```
+
+with `RESULT` exactly `PASS` or `BLOCKED`.
+
+The parent may summarize this result; it may **not** fabricate it. Retain enough child findings in the parent comment to show the final decision came from the independent child.
+
+On routing failure the child returns `ROUTING_OK: false` with `REASON` and stops without production review.
+
+#### Foreground / fail-closed provenance
+
+The `pre-playtest-reviewer` invocation is a **foreground dependency** for certification. Wait for the child result before doing anything with `QF_FINAL_*`.
+
+If any of the following occurs:
+
+- `pre-playtest-reviewer` cannot be found
+- Task/subagent invocation is unavailable
+- child launch fails, crashes, times out, or returns an error
+- child result is missing or lacks the required structure
+- `ROUTING_OK` is not exactly `true`
+- returned candidate SHA/routing evidence does not match the current candidate
+- parent cannot determine whether the actual configured child completed
+
+then **do not** emit `QF_FINAL_STATUS: PASS` or `QF_PLAYTEST_READY`. Do not substitute parent judgment. Stop the final gate and emit a clearly non-certifying operational marker such as:
+
+```
+QF_FINAL_GATE: ERROR
+QF_FINAL_HEAD: <sha>
+REASON: pre-playtest-reviewer result not obtained/validated
+```
+
+This is an **automation failure**, not a gameplay P0/P1 and not a Kimi `BLOCKED` review. Do **not** ask `implementation-worker` to “fix” an invocation/infrastructure failure.
+
+#### PASS / BLOCKED provenance
+
+The parent may emit:
 
 ```
 QF_FINAL_HEAD: <sha>
 QF_FINAL_STATUS: PASS
 ```
 
-or
+**only when all** of these are true:
+
+1. exact-head Grok PASS exists
+2. exact-head iOS CI is green
+3. the parent actually delegated to the named `pre-playtest-reviewer`
+4. that child completed
+5. that child returned `ROUTING_OK: true`
+6. that child returned the required structured result
+7. that child's `RESULT` is exactly `PASS`
+8. the result corresponds to the same exact candidate SHA
+
+Only then may the parent emit:
+
+```
+QF_PLAYTEST_READY: <sha>
+```
+
+If the actual child result is `RESULT: BLOCKED`, the parent may emit:
 
 ```
 QF_FINAL_HEAD: <sha>
 QF_FINAL_STATUS: BLOCKED
 ```
 
-If `PASS`, the orchestrator also emits:
+and handle the actual P0/P1 findings via the existing same-PR fix loop.
 
-```
-QF_PLAYTEST_READY: <sha>
-```
+**Question the child must answer:**
 
-**Desired certification sequence on pass:**
+> Is there any material defect, contradiction, missing automated test, or machine-detectable uncertainty that should be resolved BEFORE scarce human playtest time is consumed?
+
+The independent final reviewer must also:
+
+- **not** assume Grok is correct merely because Grok passed
+- block only for **P0/P1** machine-detectable issues
+- **not** claim native visual inspection of screenshots (textual evidence only; visual inspection remains the orchestrator's responsibility)
+
+**Desired certification sequence on pass (only with proven child provenance):**
 
 ```
 QF_GROK_HEAD: <sha>
@@ -361,6 +472,14 @@ Escalate to the **`architecture-escalator`** project subagent when:
 4. Old Grok and final-review certifications become **stale**
 5. Run the **full gate** again (Grok → CI → pre-playtest-reviewer)
 
+### If final-gate ERROR (child result not obtained/validated)
+
+1. Treat as an **automation failure**, not a gameplay P0/P1
+2. Emit `QF_FINAL_GATE: ERROR` (non-certifying)
+3. Do **not** emit `QF_FINAL_STATUS: PASS` or `QF_PLAYTEST_READY`
+4. Do **not** ask `implementation-worker` to “fix” invocation/infrastructure failure
+5. Stop for human/operator resolution of the automation defect
+
 ### Technical disputes
 
 If Grok and the independent final reviewer genuinely disagree on a P0/P1, or if the implementation agent believes a reviewer finding is factually wrong, record:
@@ -385,9 +504,9 @@ Exact lifecycle for a **gameplay milestone PR**:
 6. **Orchestrator** reviews full exact head.
 7. If `BLOCKED` (P0/P1) → orchestrator invokes `implementation-worker` → push → **PR pushed** retriggers orchestrator from step 6.
 8. When Grok `PASS` → wait for **exact-head** `iOS CI`.
-9. When CI green → orchestrator invokes `pre-playtest-reviewer` once for that head.
-10. If `BLOCKED` → orchestrator invokes `implementation-worker` → push → restart from step 6.
-11. When orchestrator posts `QF_PLAYTEST_READY` for the exact SHA, that exact artifact may be used for human playtesting.
+9. When CI green → orchestrator **actually invokes** `pre-playtest-reviewer` once for that head with a routing pack, waits for the child result, and validates the child contract.
+10. If child `RESULT: BLOCKED` → orchestrator invokes `implementation-worker` → push → restart from step 6. If child result missing/invalid → emit `QF_FINAL_GATE: ERROR` and stop (do not self-certify).
+11. When orchestrator posts provenance-backed `QF_PLAYTEST_READY` for the exact SHA, that exact artifact may be used for human playtesting.
 12. Human records one of:
     - `PLAYTEST: PASS`
     - `PLAYTEST: FAIL`
@@ -401,8 +520,10 @@ Exact lifecycle for a **gameplay milestone PR**:
 |-----------|---------------------|
 | Green CI alone | **No** |
 | Grok PASS alone | **No** |
+| Green CI + Grok PASS without proven `pre-playtest-reviewer` child result | **No** |
+| Parent comment claiming final PASS without validated child contract | **No** |
 | Final review PASS against a stale SHA | **No** |
-| `QF_PLAYTEST_READY` for the **exact artifact SHA** | **Yes** |
+| `QF_PLAYTEST_READY` for the **exact artifact SHA** with proven child PASS provenance | **Yes** |
 
 ---
 
@@ -482,15 +603,15 @@ After merge of the docs-lock PR, treat this document as **LOCKED** unless empiri
 
 | Component | Status |
 |-----------|--------|
-| This protocol document | **Documented** — locked after docs-lock merge |
+| This protocol document | **Documented** — locked after docs-lock merge; corrective cost/provenance update in progress |
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
-| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; **not yet validated** in an actual Cloud subagent run |
-| `QF — Milestone Orchestrator` | **Configured externally** — **DISABLED** pending validation |
+| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; routing/model smoke observed; cost discipline and end-to-end provenance **not** validated |
+| `QF — Milestone Orchestrator` | **Configured externally** — **DISABLED** pending merge+sync of this corrective docs change into PR #1 |
 | `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** pending validation |
 | Bot-comment automation chaining | **Abandoned** — unsuitable with current Cursor Automation UI |
 | Separate review-fixer / final-reviewer top-level automations | **Abandoned** — orchestrator owns full gate |
 
 No additional automation components are planned before end-to-end validation.
 
-Do not claim the orchestrator chain is validated until it has been exercised end-to-end against gameplay milestone PR #1.
+Do not claim the orchestrator chain is validated until exact-head Grok PASS, exact-head CI, an observed `pre-playtest-reviewer` child delegation with a validated child contract, and provenance-backed `QF_FINAL_*` / `QF_PLAYTEST_READY` have all been exercised against gameplay milestone PR #1.
