@@ -1,89 +1,71 @@
 # Quiet Factory — Runtime State
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 This file is the short-lived operational truth for the project.
 
 Do not turn this into product canon. Durable decisions belong in `DECISIONS.md`; the complete product thesis belongs in `MASTER_PLAN.md`.
 
+Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machine gate results (`QF_GROK_*`, `QF_SOL_*`, `QF_PLAYTEST_READY`) belong in PR comments, automation output, or commit-adjacent artifacts — not here.
+
 ---
 
 ## Current phase
 
-**Phase 0 — Product setup / pre-prototype**
+**Phase 1 — Gray-box MVP milestone (PR #1) + automation infrastructure**
 
 ## Current objective
 
-Build the smallest playable prototype capable of testing this question:
+1. Install and validate the development automation pipeline documented in `docs/AUTOMATION_PROTOCOL.md`.
+2. Defer further human playtest until the automated pre-playtest gate is operational.
 
-> Is the tap → release → conveyor → match → clear loop intrinsically satisfying and strategically interesting enough to justify production?
+Do **not** start new gameplay changes on `main` during this pass.
 
 ## Current status
 
-- Product thesis defined
-- V1 constraints defined
-- Technical direction selected: Swift + SpriteKit + SwiftUI
-- Core interaction concept defined
-- macOS GitHub Actions `iOS CI` is part of the implementation loop and is the authoritative Apple/Xcode validation
-- A SHA is not iOS-verified unless `iOS CI` passes for that commit
-- QuietFactory.xcodeproj is not created yet; CI is expected to fail until the project and shared `QuietFactory` scheme exist
-- Prototype not yet built
-- Visual identity not yet finalized
-- No generator/solver implemented
-- No App Store assets created
+### Milestone (PR #1)
+
+- **PR #1** (`agent/mvp-nightly` → `main`) remains the current **gray-box prototype milestone**.
+- Draft PR: *MVP: Quiet Factory gray-box prototype*.
+- Implementation on that branch includes deterministic `GameCore`, gray-box UI, 13 hand-authored levels, solvability tests, and passing `iOS CI` at last check.
+- Machine review (Grok-style) reported **no known P0/P1 blockers** at the last reviewed state on that branch.
+
+### Automation
+
+| Item | Status |
+|------|--------|
+| `docs/AUTOMATION_PROTOCOL.md` | **Documented** (this pass) |
+| `.cursor/BUGBOT.md` review rubric | **Documented** (this pass) |
+| Grok PR reviewer automation | **Planned** — not configured |
+| Composer review-fixer automation | **Planned** — not configured |
+| Sol pre-playtest gate | **Planned** — not configured |
+| Playtest-fail fixer | **Planned** — not configured |
+| Post-merge next-milestone automation | **Planned** — not configured |
+
+### Human playtest
+
+- Human playtest is **intentionally deferred** until the automated pre-playtest gate (`QF_PLAYTEST_READY`) is operational.
+- Appetize time is scarce (~30 free minutes total); do not consume it for routine validation.
+- A green CI run or informal review alone does **not** authorize human playtesting.
 
 ## Active scope
 
-Prototype only:
-
-- deterministic board state
-- directional crates/blocks
-- tap-to-release
-- blocked-path feedback
-- conveyor/buffer
-- matching
-- clearing
-- simple win state
-- restart
-- basic haptics
-- basic sound
-- several manually-authored test boards
+- Automation infrastructure and operating-protocol docs
+- PR #1 remains open as the gray-box milestone (fixes via same PR only)
 
 ## Not active yet
 
-- campaign
-- procedural generation
-- solver
-- daily puzzle
-- stats
-- sharing
-- level select
-- final art
-- monetization plumbing
-- App Store work
+- New gameplay features beyond PR #1 milestone scope
+- Campaign, generator, solver production pipeline, daily puzzle, undo, final art, App Store
+- Procedural generation (blocked until gray-box loop passes human validation)
 
 ## Immediate success criterion
 
-A tester should:
-1. understand the basic rule rapidly;
-2. find individual interactions satisfying;
-3. encounter meaningful sequencing decisions;
-4. voluntarily play another board.
+The automation chain (CI → Grok review → Composer fixes → Sol gate → playtest authorization) is **configured, validated against PR #1, and documented** before another human playtest is scheduled.
 
 ## Current blockers
 
-Xcode project missing. `iOS CI` will fail until bootstrap creates `QuietFactory.xcodeproj` and a shared `QuietFactory` scheme.
-
-## Open questions
-
-1. Exact conveyor capacity?
-2. Clear rule: groups of 3, groups by fixed target, or another matching rule?
-3. Do crates leave only in cardinal directions?
-4. How visibly should future conveyor consequences be telegraphed?
-5. Is a hard stuck/fail state desirable, or should undo always make failure recoverable?
-6. How many colors produce the best readability/depth balance?
-7. Should crates have purely directional arrows or path-specific exits?
-8. What board size feels best on one-thumb portrait play?
+None for documentation. Automation components listed above are not yet implemented.
 
 ## Next checkpoint
 
-Playable gray-box prototype.
+Validate the full automation chain against PR #1; only then decide whether PR #1 qualifies for another human playtest.
