@@ -7,24 +7,37 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 ---
 
-## P0 — Validate automation chain
+## P0 — Corrective docs, then re-validate PR #1 orchestrator chain
 
-Complete in roughly this order:
+`QF — Milestone Orchestrator` is **DISABLED**. Keep it disabled until this corrective change is on PR #1. `QF — Next Milestone Starter` remains **DISABLED**. Do not run Kimi during the corrective docs PR itself.
 
-1. **Merge this final docs-lock PR.**
-2. **Sync current `main` into PR #1** (`agent/mvp-nightly`).
-3. **Enable `QF — Milestone Orchestrator` only** — keep `QF — Next Milestone Starter` disabled.
-4. **Produce one new PR #1 head** — push once to trigger the exact-head validation chain.
-5. **Validate exact-head Grok review** — confirm `QF_GROK_*` markers on the new SHA.
-6. **Validate routine Composer delegation** — if P0/P1 occurs, confirm orchestrator delegates to `implementation-worker` on the same branch.
-7. **Validate `architecture-escalator` only if naturally required** — do not create an artificial architecture defect merely to exercise it.
-8. **Validate exact-head iOS CI handling** — orchestrator waits for green CI before final review.
-9. **Validate `pre-playtest-reviewer` invocation** — confirm Kimi K3 High binding with no silent model fallback; confirm `QF_FINAL_*` markers.
-10. **Confirm exact certification sequence** — `QF_GROK_*` → `QF_FINAL_*` → `QF_PLAYTEST_READY` for the same SHA.
-11. **Only then consume human Appetize time** (see P1 below).
-12. **Keep `QF — Next Milestone Starter` disabled** until the successful human playtest is ready to lead into a merge.
+Seeing `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` in a parent comment is **not itself evidence** that the independent reviewer executed.
 
-Do not claim automation is validated until steps 5–10 pass.
+Complete in this order:
+
+1. **Merge this corrective docs/rules PR** into `main` (Kimi cost discipline + fail-closed final-review provenance).
+2. **Sync latest `main` into PR #1** (`agent/mvp-nightly`). Required: the orchestrator reads `.cursor/agents/pre-playtest-reviewer.md` from the candidate branch; a `main`-only merge does not affect PR #1 until synced.
+3. **Keep orchestrator disabled** until that sync is present on PR #1.
+4. **Enable only `QF — Milestone Orchestrator`** — leave Next Milestone Starter disabled.
+5. **Produce exactly one fresh PR #1 candidate head** (one push).
+6. **Verify exact-head Grok PASS** (`QF_GROK_HEAD` / `QF_GROK_STATUS` for the new SHA).
+7. **Verify exact-head iOS CI** green for that SHA.
+8. **Observe an actual `pre-playtest-reviewer` child delegation** (named Task/subagent invoke — not parent self-review).
+9. **Verify returned child contract:**
+   - `REVIEWER_ROLE: pre-playtest-reviewer`
+   - `REVIEWED_HEAD` matches candidate
+   - `ROUTING_OK: true`
+   - required review sections present
+   - `RESULT` exactly `PASS` or `BLOCKED`
+10. **Only after that child result** may `QF_FINAL_*` appear; only after actual child `PASS` may `QF_PLAYTEST_READY` appear.
+11. **Confirm the new cost-disciplined prompt is actually being used** (post-sync branch content) and inspect Kimi usage after that one run for cost validation (observed usage only — no invented token counts).
+12. **Confirm Automation MCP/tool config** remains Comment on PR only (already manually checked; re-verify checkbox only — do not rebuild).
+13. **Only then** human Appetize playtest (P1).
+14. Keep **Next Milestone Starter disabled**.
+
+Treat any prior `QF_PLAYTEST_READY` for `abb46647…` as **invalid for automation-validation purposes**.
+
+Do not claim automation is validated until steps 6–11 pass with provenance.
 
 ---
 
@@ -32,7 +45,7 @@ Do not claim automation is validated until steps 5–10 pass.
 
 ### Human playtest gray-box MVP (PR #1)
 
-Only when PR #1 head has `QF_PLAYTEST_READY` for that exact SHA:
+Only when PR #1 head has provenance-backed `QF_PLAYTEST_READY` for that exact SHA:
 
 - Define a predefined human question before opening Appetize (see `docs/AUTOMATION_PROTOCOL.md` § E).
 - **Without a Mac:** download `QuietFactory-Simulator-<sha>` from the green iOS CI run on GitHub Actions, upload the zip to [Appetize.io](https://appetize.io), and play in the browser

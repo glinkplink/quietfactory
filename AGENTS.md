@@ -8,6 +8,8 @@ Read in this order:
 4. [NEXT_ACTIONS.md](./NEXT_ACTIONS.md) — current tactical work queue.
 5. [AGENT_HANDOFF.md](./AGENT_HANDOFF.md) — implementation conventions and handoff requirements.
 
+**Specialist exception:** Narrowly scoped read-only specialist subagents may follow the smaller read set defined in their own `.cursor/agents/<role>.md` when that role file explicitly overrides this bootstrap read order. This exists so expensive final reviewers (for example `pre-playtest-reviewer`) are not forced to ingest the full implementation bootstrap merely to perform one review. Normal implementation agents retain the order above.
+
 Rules:
 
 - Read the runtime docs before making substantive changes.
