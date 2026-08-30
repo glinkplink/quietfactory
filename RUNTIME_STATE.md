@@ -15,7 +15,7 @@ Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machi
 
 ## Current objective
 
-PR #7 is on `main` and synced into PR #1. `QF — Milestone Orchestrator` is **ENABLED**. This head is the one post-enable candidate for re-validating the orchestrator chain. Do **not** claim the overall automation chain is validated until observed child provenance exists.
+PR #7 is on `main` and synced into PR #1. Orchestrator is **ENABLED** with Draft opened, PR pushed, and `ios-ci.yml` Success. This head patches the CI-handoff hole (subscribe-and-exit dropped Kimi). Do **not** claim the chain is validated until a CI-success run actually invokes `pre-playtest-reviewer`.
 
 Do **not** start new gameplay changes on `main` during this pass.
 
@@ -41,17 +41,17 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 | Item | Status |
 |------|--------|
-| `docs/AUTOMATION_PROTOCOL.md` | **Locked** + PR #7 cost/provenance correction merged to `main` |
+| `docs/AUTOMATION_PROTOCOL.md` | **Locked** + CI-handoff correction (workflow-success wake-up) on this PR |
 | `.cursor/BUGBOT.md` review rubric | **Locked** |
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
 | `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; cost-disciplined prompt + child-result contract from PR #7 |
-| `QF — Milestone Orchestrator` | **Configured externally** — **ENABLED** (post-sync validation run) |
+| `QF — Milestone Orchestrator` | **Configured externally** — **ENABLED** — Draft opened, PR pushed, `ios-ci.yml` Success |
 | `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** |
 
 No additional automation components are planned. The locked two-automation architecture is unchanged.
 
-### Empirical validation — two separate failures
+### Empirical validation — three separate failures
 
 #### 1. Routing/model smoke (cost)
 
@@ -71,6 +71,13 @@ No additional automation components are planned. The locked two-automation archi
 - `QF_PLAYTEST_READY` on that SHA is **INVALID / stale for automation-validation purposes**. Do not rewrite or delete the historical GitHub marker merely to hide the failed validation; treat it as invalid/stale for protocol purposes.
 - Human playtest remains **blocked / deferred**.
 
+#### 3. CI wait / no Kimi wake-up (PR #1 head `b7dd80a…`)
+
+- Post-enable candidate `b7dd80a1e6b770105832f1ce054c63ae3c46b5b1` got a Grok run ([bc-af922655](https://cursor.com/agents/bc-af922655-6799-47ab-bb51-b045758bdc21)) that ended in 3m52s after intending to wait for iOS CI.
+- Exact-head `iOS CI` later succeeded (push + PR runs). No `pre-playtest-reviewer` child ran.
+- Root cause: automations with only Draft opened / PR pushed do not resume when CI completes; ending the turn finishes the run.
+- Fix: same orchestrator, additional `ios-ci.yml` Success trigger; protocol forbids subscribe-and-exit.
+
 ### Human playtest
 
 - Human playtest remains **intentionally deferred** until a provenance-backed `QF_PLAYTEST_READY` exists for a fresh exact head after cost-disciplined Kimi validation.
@@ -81,7 +88,7 @@ No additional automation components are planned. The locked two-automation archi
 
 ## Active scope
 
-- One fresh exact-head orchestrator chain with observed `pre-playtest-reviewer` child delegation (post-enable candidate)
+- One fresh exact-head chain after the CI-handoff protocol patch: Grok `WAITING_CI` then `ios-ci.yml` success → observed `pre-playtest-reviewer` child
 - PR #1 remains open as the gray-box milestone (fixes via same PR only)
 
 ## Not active yet
@@ -93,19 +100,21 @@ No additional automation components are planned. The locked two-automation archi
 
 ## Immediate success criterion
 
-Corrective docs are on `main` (PR #7) → synced into PR #1 → one fresh exact-head chain with observed `pre-playtest-reviewer` child delegation, validated child contract, cost-disciplined prompt in use, and provenance-backed certification — **before** human playtest or enabling `QF — Next Milestone Starter`.
+Corrective docs are on `main` (PR #7) → synced into PR #1 → CI-handoff trigger + protocol on the candidate → Grok `WAITING_CI` then `ios-ci.yml` success invokes `pre-playtest-reviewer` with a validated child contract — **before** human playtest or enabling `QF — Next Milestone Starter`.
 
 ## Current blockers
 
 - Cost discipline not yet validated on a production candidate.
 - Final-review provenance rule not yet validated end-to-end.
+- CI-handoff (Kimi wake on `ios-ci.yml` success) not yet validated.
 - Stale/invalid `QF_PLAYTEST_READY` on `abb46647…` must not be treated as playtest authorization.
 
 ## Next checkpoint
 
 1. Sync/merge latest `main` (PR #7) into PR #1 — **done** (`b74d386`).
 2. Re-enable **only** `QF — Milestone Orchestrator` — **done**.
-3. Produce one new PR #1 head/push **after** enable — **this commit**.
-4. Validate the exact-head chain including observed child delegation and provenance.
-5. Keep `QF — Next Milestone Starter` disabled.
-6. Only after provenance-backed `QF_PLAYTEST_READY` may human playtest proceed.
+3. Add `ios-ci.yml` Success trigger on that same automation — **done** (branch filter optional; protocol no-ops non-milestone SHAs).
+4. Push this CI-handoff protocol patch — **this commit**.
+5. Validate: Grok `PASS` + `WAITING_CI`, then CI-success run invokes `pre-playtest-reviewer` with a validated child contract.
+6. Keep `QF — Next Milestone Starter` disabled.
+7. Only after provenance-backed `QF_PLAYTEST_READY` may human playtest proceed.

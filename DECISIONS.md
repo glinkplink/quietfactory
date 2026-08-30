@@ -1,5 +1,5 @@
 # Quiet Factory — Decision Log
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 Record durable product/architecture decisions here.
 
@@ -83,8 +83,14 @@ Format:
 
 ## 2026-08-29 — Prototype before production
 
-**Decision:** Do not build campaign/meta systems until the gray-box loop passes repeated-play testing.
+**Status:** Active.
 
-**Rationale:** Largest product risk is that the mechanic is satisfying only as a brief novelty.
+---
+
+## 2026-08-30 — CI handoff is a new orchestrator run, not a paused turn
+
+**Decision:** `QF — Milestone Orchestrator` stays one of exactly two automations. iOS CI success wakes that **same** orchestrator via **Workflow run completed** (`ios-ci.yml`, Success). Grok must not “subscribe and end the turn” to wait for CI.
+
+**Rationale:** Cursor Automations do not resume a finished run when GitHub CI later completes. Observed on PR #1 `b7dd80a…`: Grok ended after PASS; iOS CI went green; Kimi never ran. A third automation is not required.
 
 **Status:** Active.
