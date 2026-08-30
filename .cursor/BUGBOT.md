@@ -86,7 +86,7 @@ List all findings with severity (P0–P3) above the status block.
 
 ## Certification ownership
 
-The top-level **Grok milestone orchestrator** owns all `QF_GROK_*`, `QF_FINAL_*`, and `QF_PLAYTEST_READY` PR markers.
+The top-level **`QF — Milestone Orchestrator`** owns all `QF_GROK_*`, `QF_FINAL_*`, and `QF_PLAYTEST_READY` PR markers.
 
 Repo subagents (`implementation-worker`, `pre-playtest-reviewer`, `architecture-escalator`) return structured results to the parent orchestrator and must **not** independently post certification markers.
 

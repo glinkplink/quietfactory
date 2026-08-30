@@ -10,76 +10,98 @@ Any Cursor Cloud Agent, local agent, automation, or reviewer must follow this wo
 
 ## Pipeline overview
 
-The intended **gameplay milestone** loop is:
+The permanent **gameplay milestone** loop is:
 
 ```
-PR opened / pushed
-  → Grok 4.6 High top-level orchestrator reviews full exact PR head
-  → if P0/P1: implementation-worker fixes SAME PR branch and pushes
-  → new push restarts Grok review
-  → if no P0/P1: wait for exact-head CI
-  → if CI green: orchestrator invokes pre-playtest-reviewer (independent final reviewer)
-  → if final review blocks: implementation-worker fixes SAME PR branch and pushes
-  → if final review passes: orchestrator posts QF_PLAYTEST_READY
+fresh main
+  → QF — Next Milestone Starter opens draft milestone PR
+  → Draft opened starts QF — Milestone Orchestrator
+  → Grok exact-head review
+  → implementation-worker fixes if necessary
+  → push
+  → PR pushed Grok run owns new SHA
+  → exact-head iOS CI
+  → pre-playtest-reviewer (independent final review)
+  → QF_PLAYTEST_READY
   → human playtest
-  → manual merge
-  → (separate) post-merge next-milestone automation
+  → PASS = human manual merge
+  → PR merged starts QF — Next Milestone Starter for next draft milestone
 ```
+
+If playtest **FAIL**:
+
+- the same milestone PR remains open
+- the orchestrator delegates fixes via `implementation-worker`
+- push restarts the full exact-head gate
 
 A PR represents a **playtestable product milestone**, not a single code change. Multiple commits and automated review/fix loops happen **within the same PR**.
 
-After a successful human playtest:
-
-1. The milestone PR is **manually merged**.
-2. The next milestone starts from fresh `main`.
-3. A new draft PR is created for that next milestone.
-
 **Do not run human playtests for infrastructure, automation, CI, or docs-only PRs.**
+
+There is **no** bot-comment chaining, separate fixer automation, separate final-review automation, dedicated playtest-failure automation, or permanent dispute-adjudicator automation.
 
 ---
 
 ## Top-level automations
 
-### A. `QF — Grok Milestone Orchestrator`
+Quiet Factory has **exactly two** top-level Cursor Automations. No other top-level automations are planned.
 
-**Configured externally** (currently named `QF — Grok Milestone Reviewer`; instructions should be updated to match this orchestrator role).
+### A. `QF — Milestone Orchestrator`
 
 | Property | Value |
 |----------|-------|
-| Model | Grok 4.6 High, non-Fast |
-| Triggers | Gameplay milestone PR opened / PR pushed |
-| Owns | PR comments and all `QF_*` certification markers |
+| Status | **Configured externally** — **DISABLED** pending docs lock / end-to-end validation |
+| Model | Cursor Grok 4.6 High, non-Fast |
+| Repository | `glinkplink/quietfactory` |
+| Triggers | **Draft opened**, **PR pushed** |
+| Tools | Comment on Pull Request; PR approval disabled |
+
+**Trigger note:** `PR opened` is deliberately **not** used. All gameplay milestones begin as drafts; avoiding `PR opened` prevents redundant Grok runs.
 
 **Responsibilities:**
 
-1. Review the **full exact PR head** against `main`.
-2. Emit `QF_GROK_HEAD` / `QF_GROK_STATUS` itself.
-3. If P0/P1 findings exist, invoke **`implementation-worker`** to fix on the **same PR branch** and push when appropriate.
-4. Invoke **`architecture-escalator`** only when architecture escalation is required.
-5. Wait for **exact-head** `iOS CI` before final certification.
-6. Invoke **`pre-playtest-reviewer`** only after:
-   - Grok has **zero P0/P1** for the exact head, and
-   - **exact-head** `iOS CI` succeeds.
-7. Translate `pre-playtest-reviewer` results into `QF_FINAL_HEAD` / `QF_FINAL_STATUS` and, when appropriate, `QF_PLAYTEST_READY`.
+1. Own the complete gameplay milestone machine gate for the exact current PR head.
+2. Review the **full exact PR head** against `main`.
+3. Emit `QF_GROK_HEAD` / `QF_GROK_STATUS`.
+4. Delegate routine fixes to **`implementation-worker`** on the **same PR branch**.
+5. Delegate architecture questions to **`architecture-escalator`** only when required.
+6. Wait for **exact-head** `iOS CI` before final certification.
+7. Invoke **`pre-playtest-reviewer`** at most **once per eligible candidate SHA**, only after Grok has zero P0/P1 and exact-head CI succeeds.
+8. Translate final-review results into `QF_FINAL_HEAD` / `QF_FINAL_STATUS` and, when appropriate, `QF_PLAYTEST_READY`.
+9. Wait for human `PLAYTEST: PASS` or `PLAYTEST: FAIL`.
+10. **Never** merge.
 
 Any push **invalidates** all prior review/certification and restarts from Grok.
 
-**Cost rule:** The orchestrator must invoke `pre-playtest-reviewer` at most **once per exact candidate head**, and only after Grok + CI are already clear.
+### B. `QF — Next Milestone Starter`
 
-### B. Post-merge next-milestone automation
+| Property | Value |
+|----------|-------|
+| Status | **Configured externally** — **DISABLED** pending validation of the current milestone pipeline |
+| Model | Composer 2.5, non-Fast |
+| Repository | `glinkplink/quietfactory` |
+| Trigger | **PR merged** |
+| Tools | Open Pull Request; Comment on Pull Request; PR approval disabled |
 
-- Remains **planned separately**.
-- Does **not** participate in the current-head review/fix loop.
+**Responsibilities:**
 
-### Retired / deliberately not used
+1. Normally does **nothing**.
+2. Proceeds only after a gameplay milestone has exact-head `QF_PLAYTEST_READY` and subsequent human `PLAYTEST: PASS`.
+3. Starts exactly **one** next authorized milestone from fresh current `main`.
+4. Opens **one DRAFT PR**.
+5. Does **not** merge or playtest.
 
-The following were considered and **abandoned** because Cursor's generic PR-comment Automation trigger does **not** provide safe regex/body filtering in the current UI, and **bot-generated PR comments cannot be relied upon** to trigger another Cursor Automation:
+Does **not** participate in the current-head review/fix loop.
 
-- Separate **Composer review-fixer** top-level automation
-- Separate **final-reviewer** top-level automation
-- **Bot-comment chaining** between Cursor Automations
+### Deliberately abandoned (historical)
 
-Therefore the **Grok milestone orchestrator** owns the complete machine gate for the current head.
+Cursor's generic PR-comment Automation trigger does **not** provide safe regex/body filtering, and bot-generated PR comments cannot reliably trigger another Cursor Automation. Therefore:
+
+- separate Composer review-fixer top-level automation — **abandoned**
+- separate final-reviewer top-level automation — **abandoned**
+- bot-comment chaining between Cursor Automations — **abandoned**
+
+The **Milestone Orchestrator** owns the complete machine gate for the current head.
 
 ---
 
@@ -125,7 +147,7 @@ Gameplay milestone PRs remain open through:
 
 ### Merge and next milestone
 
-Successful playtest → **human/manual merge** → next milestone begins from current `main`.
+Successful playtest → **human/manual merge** → `QF — Next Milestone Starter` opens the next draft milestone from current `main`.
 
 ### Non-gameplay PRs
 
@@ -138,6 +160,7 @@ Infrastructure, automation, CI, docs, and tooling PRs **do not automatically tri
 | Role | Binding |
 | --- | --- |
 | Milestone orchestrator | Cursor Grok 4.6 High, non-Fast |
+| Next milestone starter | Composer 2.5, non-Fast |
 | Implementation worker | `composer-2.5[fast=false]` |
 | Architecture escalator | Grok 4.6, read-only |
 | Independent pre-playtest reviewer | `kimi-k3-high`, read-only |
@@ -150,20 +173,20 @@ Workflow semantics depend on roles, not providers. Changing a model binding does
 
 | Role | Where it lives |
 |------|----------------|
-| Milestone orchestration, Grok review, certification markers | **Top-level automation:** `QF — Grok Milestone Orchestrator` |
+| Milestone orchestration, Grok review, certification markers | **Top-level automation:** `QF — Milestone Orchestrator` |
+| Post-merge next draft milestone | **Top-level automation:** `QF — Next Milestone Starter` |
 | Routine code modifications / P0/P1 fixes | **Project subagent:** `.cursor/agents/implementation-worker.md` |
 | Implementation-time architecture escalation | **Project subagent:** `.cursor/agents/architecture-escalator.md` (read-only) |
 | Independent final pre-playtest review | **Project subagent:** `.cursor/agents/pre-playtest-reviewer.md` (read-only) — invoked **only** by the orchestrator |
 | Human playtest | Human — comprehension / feel / fun / frustration / clarity |
-| Post-merge next milestone | **Planned** separate top-level automation |
 
-**Normal implementation agents must not casually invoke the independent final reviewer.** Only the parent orchestrator may call `pre-playtest-reviewer`, and only under the cost rule above.
+**Normal implementation agents must not casually invoke the independent final reviewer.** Only `QF — Milestone Orchestrator` may call `pre-playtest-reviewer`, and only under the cost rule above.
 
 Subagents return **structured results to the parent** and must **not** independently post `QF_GROK_*`, `QF_FINAL_*`, or `QF_PLAYTEST_READY` markers.
 
 ---
 
-### Grok 4.6 High — milestone orchestrator and independent PR reviewer
+### Milestone orchestrator — Grok review
 
 The top-level orchestrator runs on **meaningful PR heads** for gameplay/product milestone PRs.
 
@@ -211,6 +234,8 @@ See `.cursor/BUGBOT.md` for the canonical review rubric.
 
 **Path:** `.cursor/agents/implementation-worker.md`
 
+**Model:** `composer-2.5[fast=false]` — writable
+
 **Use for:**
 
 - P0/P1 fixes delegated by the orchestrator
@@ -230,10 +255,9 @@ The worker may escalate via `ARCHITECTURE_ESCALATION_REQUIRED`; the orchestrator
 
 ### Architecture escalation (`architecture-escalator`)
 
-Implementation-time architecture escalation uses the read-only project subagent:
+**Path:** `.cursor/agents/architecture-escalator.md`
 
-- **Path:** `.cursor/agents/architecture-escalator.md`
-- **Mode:** `readonly: true` — advisory only; does not edit files
+**Model:** Grok 4.6 — read-only
 
 The orchestrator (or implementation worker via escalation signal) may invoke `architecture-escalator` **only when**:
 
@@ -253,11 +277,11 @@ Architecture escalation is **advisory/read-only** unless explicitly authorized o
 
 **Path:** `.cursor/agents/pre-playtest-reviewer.md`
 
-**Mode:** `readonly: true`
+**Model:** `kimi-k3-high` — read-only
 
 **Expensive final machine gate. Do not use continuously.**
 
-Invoked **only** by the Grok milestone orchestrator, **only after**:
+Invoked **only** by `QF — Milestone Orchestrator`, **only after**:
 
 1. Grok review for the **exact current head** has zero P0/P1 findings
 2. `iOS CI` succeeds on the **exact current head**
@@ -268,6 +292,7 @@ The independent final reviewer must:
 - review the **complete PR against `main`** on its own terms
 - **not** assume Grok is correct merely because Grok passed
 - block only for **P0/P1** machine-detectable issues
+- **not** claim native visual inspection of screenshots (textual evidence only; visual inspection remains the orchestrator's responsibility)
 
 **Question it must answer:**
 
@@ -319,7 +344,7 @@ Escalate to the **`architecture-escalator`** project subagent when:
 4. two materially different implementations would produce different long-term architecture
 5. two reasonable implementation-worker attempts failed on the same defect
 
-### If Grok orchestrator blocks (P0/P1)
+### If orchestrator blocks (P0/P1)
 
 1. Orchestrator invokes `implementation-worker` to fix valid P0/P1 issues on the **same PR branch**
 2. Do **not** create a second PR
@@ -352,13 +377,13 @@ Then **stop** and require **human resolution**. Do **not** hard-code another mod
 
 Exact lifecycle for a **gameplay milestone PR**:
 
-1. Start from current `main`.
-2. Create a fresh milestone branch.
-3. Open **one draft PR** for that milestone.
+1. Fresh `main` (from prior merge or bootstrap).
+2. `QF — Next Milestone Starter` opens **one draft PR** for the next milestone (after prior `PLAYTEST: PASS`; disabled until validated).
+3. **Draft opened** triggers `QF — Milestone Orchestrator`.
 4. Implement (human or orchestrator-delegated `implementation-worker`).
 5. Relevant local verification (tests, lint as applicable).
-6. **Grok orchestrator** reviews full exact head.
-7. If `BLOCKED` (P0/P1) → orchestrator invokes `implementation-worker` → push → repeat from step 6.
+6. **Orchestrator** reviews full exact head.
+7. If `BLOCKED` (P0/P1) → orchestrator invokes `implementation-worker` → push → **PR pushed** retriggers orchestrator from step 6.
 8. When Grok `PASS` → wait for **exact-head** `iOS CI`.
 9. When CI green → orchestrator invokes `pre-playtest-reviewer` once for that head.
 10. If `BLOCKED` → orchestrator invokes `implementation-worker` → push → restart from step 6.
@@ -366,9 +391,9 @@ Exact lifecycle for a **gameplay milestone PR**:
 12. Human records one of:
     - `PLAYTEST: PASS`
     - `PLAYTEST: FAIL`
-13. **FAIL** → same milestone PR stays open; fix and re-run machine gates before another playtest.
+13. **FAIL** → same milestone PR stays open; orchestrator delegates fixes; push restarts full exact-head gate before another playtest.
 14. **PASS** → human manually merges.
-15. Only **after merge** does the next milestone begin from new `main`.
+15. **PR merged** triggers `QF — Next Milestone Starter` for the next draft milestone.
 
 ### What does NOT authorize human playtesting
 
@@ -419,7 +444,7 @@ makes those certifications **stale**.
 The new head must pass the appropriate gates again:
 
 ```
-new push → Grok orchestrator → CI → (if gameplay milestone) pre-playtest-reviewer → QF_PLAYTEST_READY
+new push → Milestone Orchestrator → CI → (if gameplay milestone) pre-playtest-reviewer → QF_PLAYTEST_READY
 ```
 
 Do **not** resume human playtesting on a stale artifact.
@@ -440,19 +465,32 @@ Preserve all existing Quiet Factory constraints from `AGENT_HANDOFF.md` and `DEC
 
 ---
 
+## Protocol stability
+
+This protocol is considered **stable** after the initial automation configuration merge.
+
+- Do **not** redesign or rewrite automation architecture because a different model becomes fashionable or available.
+- Model bindings are intentionally isolated from workflow semantics.
+- Changing a model provider normally requires changing only the binding, not the pipeline.
+- Modify this protocol only when observed production/validation behavior proves an assumption wrong, or the user explicitly changes workflow requirements.
+
+After merge of the docs-lock PR, treat this document as **LOCKED** unless empirical validation exposes a real workflow defect.
+
+---
+
 ## Implementation status
 
 | Component | Status |
 |-----------|--------|
-| This protocol document | **Documented** |
+| This protocol document | **Documented** — locked after docs-lock merge |
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
-| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; not yet validated in an actual Cloud subagent run |
-| `QF — Grok Milestone Orchestrator` | **Configured externally** — instructions should be updated to orchestrator role |
-| Separate Composer review-fixer automation | **Abandoned** — orchestrator delegates to `implementation-worker` |
-| Separate final-reviewer top-level automation | **Abandoned** — orchestrator invokes `pre-playtest-reviewer` |
+| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; **not yet validated** in an actual Cloud subagent run |
+| `QF — Milestone Orchestrator` | **Configured externally** — **DISABLED** pending validation |
+| `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** pending validation |
 | Bot-comment automation chaining | **Abandoned** — unsuitable with current Cursor Automation UI |
-| Playtest-fail fixer | **Planned** — orchestrator may delegate fixes; dedicated automation TBD |
-| Post-merge next-milestone automation | **Planned** — not yet configured |
+| Separate review-fixer / final-reviewer top-level automations | **Abandoned** — orchestrator owns full gate |
 
-Do not claim the full orchestrator chain is validated until it has been exercised end-to-end against a gameplay milestone PR.
+No additional automation components are planned before end-to-end validation.
+
+Do not claim the orchestrator chain is validated until it has been exercised end-to-end against gameplay milestone PR #1.

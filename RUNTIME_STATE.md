@@ -11,12 +11,12 @@ Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machi
 
 ## Current phase
 
-**Phase 1 — Gray-box MVP milestone (PR #1) + automation infrastructure**
+**Phase 1 — Gray-box MVP milestone (PR #1) + automation validation**
 
 ## Current objective
 
-1. Land and validate the orchestrator/subagent automation architecture documented in `docs/AUTOMATION_PROTOCOL.md`.
-2. Defer further human playtest until the orchestrator chain is validated end-to-end.
+1. Finalize automation docs/config to match externally configured Cursor automations.
+2. Validate the orchestrator chain end-to-end before enabling automations or human playtest.
 
 Do **not** start new gameplay changes on `main` during this pass.
 
@@ -32,15 +32,15 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 | Item | Status |
 |------|--------|
-| `docs/AUTOMATION_PROTOCOL.md` | **Documented** |
+| `docs/AUTOMATION_PROTOCOL.md` | **Documented** — final reconciliation in progress; locked after merge |
 | `.cursor/BUGBOT.md` review rubric | **Documented** |
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
-| `pre-playtest-reviewer` project subagent | **Documented** — currently bound to `kimi-k3-high`; **not yet validated** in an actual Cloud subagent run |
-| `QF — Grok Milestone Orchestrator` (externally configured as `QF — Grok Milestone Reviewer`) | **Configured externally** — instructions should be updated to orchestrator role |
-| Separate Composer review-fixer automation | **Abandoned** — generic PR-comment automation chaining is unsuitable; orchestrator delegates to `implementation-worker` |
-| Separate final-reviewer top-level automation | **Abandoned** — orchestrator invokes `pre-playtest-reviewer` subagent |
-| Post-merge next-milestone automation | **Planned** — not configured |
+| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; **not yet validated** in an actual Cloud subagent run |
+| `QF — Milestone Orchestrator` | **Configured externally** — **DISABLED** pending validation |
+| `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** pending validation |
+
+No additional automation components are planned before validation.
 
 ### Human playtest
 
@@ -50,7 +50,7 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 ## Active scope
 
-- Automation infrastructure and operating-protocol docs
+- Automation docs/config finalization
 - PR #1 remains open as the gray-box milestone (fixes via same PR only)
 
 ## Not active yet
@@ -61,12 +61,20 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 ## Immediate success criterion
 
-The orchestrator chain (Grok review → `implementation-worker` fixes → exact-head CI → independent `pre-playtest-reviewer` → `QF_PLAYTEST_READY`) is **documented, configured, and validated against PR #1** before another human playtest is scheduled.
+The orchestrator chain (Grok review → `implementation-worker` fixes → exact-head CI → independent `pre-playtest-reviewer` → `QF_PLAYTEST_READY`) is **validated against PR #1** before human playtest or enabling `QF — Next Milestone Starter`.
 
 ## Current blockers
 
-Orchestrator instructions and subagent delegation paths are not yet validated end-to-end against PR #1. Next validation must confirm the Cloud run for `pre-playtest-reviewer` actually used `kimi-k3-high` rather than silently falling back.
+Both external automations remain disabled. Orchestrator/subagent delegation and Kimi model binding are not yet validated in production.
 
 ## Next checkpoint
 
-Update the external Grok automation to the orchestrator role and validate the full chain against PR #1, including final-reviewer model binding.
+After docs-lock PR merges:
+
+1. Sync latest `main` into PR #1 branch.
+2. Enable **only** `QF — Milestone Orchestrator`.
+3. Push PR #1 once to trigger the exact-head validation chain.
+4. Validate Grok → worker/escalator if needed → CI → Kimi final reviewer.
+5. Verify actual model routing/usage (no silent fallback).
+6. If `QF_PLAYTEST_READY` succeeds, human playtest.
+7. Keep `QF — Next Milestone Starter` disabled until PR #1 passes human playtest and is ready to merge.
