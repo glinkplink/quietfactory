@@ -7,20 +7,24 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 ---
 
-## P0 — Install and validate development automation
+## P0 — Validate automation chain
 
 Complete in roughly this order:
 
-1. **Land orchestrator/subagent architecture** — `docs/AUTOMATION_PROTOCOL.md`, `.cursor/agents/implementation-worker.md`, `.cursor/agents/pre-playtest-reviewer.md`, handoff/runtime updates.
-2. **Edit existing `QF — Grok Milestone Reviewer` automation** — update instructions so it becomes the **milestone orchestrator** (review, delegate fixes, wait for CI, invoke `pre-playtest-reviewer`, post `QF_*` markers).
-3. **Validate Grok → Composer fix path on PR #1** — if a P0/P1 exists, confirm orchestrator delegates to `implementation-worker` and fixes land on the same branch.
-4. **Validate Grok → CI → final-review path on PR #1** — confirm exact-head CI gates `pre-playtest-reviewer` invocation.
-5. **Verify actual subagent model usage** — Composer is non-Fast (`composer-2.5[fast=false]`); `pre-playtest-reviewer` uses `kimi-k3-high` rather than silently falling back.
-6. **Only then allow `QF_PLAYTEST_READY`** — orchestrator posts certification only after Grok PASS + CI green + independent final reviewer PASS (`QF_FINAL_STATUS: PASS`).
-7. **Human playtest** — only when `QF_PLAYTEST_READY` exists for the exact head (see P1 below).
-8. **Configure post-merge next-milestone automation** — after the current milestone gate is proven.
+1. **Merge this final docs-lock PR.**
+2. **Sync current `main` into PR #1** (`agent/mvp-nightly`).
+3. **Enable `QF — Milestone Orchestrator` only** — keep `QF — Next Milestone Starter` disabled.
+4. **Produce one new PR #1 head** — push once to trigger the exact-head validation chain.
+5. **Validate exact-head Grok review** — confirm `QF_GROK_*` markers on the new SHA.
+6. **Validate routine Composer delegation** — if P0/P1 occurs, confirm orchestrator delegates to `implementation-worker` on the same branch.
+7. **Validate `architecture-escalator` only if naturally required** — do not create an artificial architecture defect merely to exercise it.
+8. **Validate exact-head iOS CI handling** — orchestrator waits for green CI before final review.
+9. **Validate `pre-playtest-reviewer` invocation** — confirm Kimi K3 High binding with no silent model fallback; confirm `QF_FINAL_*` markers.
+10. **Confirm exact certification sequence** — `QF_GROK_*` → `QF_FINAL_*` → `QF_PLAYTEST_READY` for the same SHA.
+11. **Only then consume human Appetize time** (see P1 below).
+12. **Keep `QF — Next Milestone Starter` disabled** until the successful human playtest is ready to lead into a merge.
 
-Do not claim automation is validated until steps 3–5 pass.
+Do not claim automation is validated until steps 5–10 pass.
 
 ---
 
@@ -40,7 +44,7 @@ Only when PR #1 head has `QF_PLAYTEST_READY` for that exact SHA:
 - Confirm win state is visible for ~1 second before auto-advance
 - Note any levels that feel unfair or visually unclear
 - Record `PLAYTEST: PASS` or `PLAYTEST: FAIL`.
-- On PASS → human manually merges PR #1.
+- On PASS → human manually merges PR #1 → enable `QF — Next Milestone Starter` only when ready for the next milestone.
 - On FAIL → orchestrator delegates fixes on same PR, re-run full machine gates, then playtest again.
 
 ### Tune from playtest (if needed)
@@ -69,7 +73,7 @@ Only when PR #1 head has `QF_PLAYTEST_READY` for that exact SHA:
 
 ## Agent rule
 
-An implementation agent should not jump ahead into P2/P3 gameplay work while P0 automation remains incomplete.
+An implementation agent should not jump ahead into P2/P3 gameplay work while P0 validation remains incomplete.
 
 The prototype gate and playtest gate are intentional.
 
