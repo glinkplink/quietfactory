@@ -165,3 +165,40 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             test
           echo "xcodebuild test succeeded"
+
+      - name: Build simulator app for browser playtest artifact
+        run: |
+          set -euo pipefail
+          derived_data="${RUNNER_TEMP}/QuietFactoryDerivedData"
+          xcodebuild \
+            -project QuietFactory.xcodeproj \
+            -scheme QuietFactory \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath "${derived_data}" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          app_path="${derived_data}/Build/Products/Debug-iphonesimulator/QuietFactory.app"
+          if [[ ! -d "${app_path}" ]]; then
+            echo "::error::Expected simulator app at ${app_path}"
+            ls -la "${derived_data}/Build/Products/Debug-iphonesimulator" || true
+            exit 1
+          fi
+          echo "Built simulator app at ${app_path}"
+
+      - name: Package simulator app artifact
+        run: |
+          set -euo pipefail
+          products_dir="${RUNNER_TEMP}/QuietFactoryDerivedData/Build/Products/Debug-iphonesimulator"
+          zip_path="${RUNNER_TEMP}/QuietFactory-Simulator.zip"
+          cd "${products_dir}"
+          ditto -c -k --sequesterRsrc --keepParent QuietFactory.app "${zip_path}"
+          echo "Packaged ${zip_path} ($(du -h "${zip_path}" | awk '{print $1}'))"
+
+      - name: Upload simulator app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuietFactory-Simulator-${{ github.sha }}
+          path: ${{ runner.temp }}/QuietFactory-Simulator.zip
+          retention-days: 7
+          if-no-files-found: error

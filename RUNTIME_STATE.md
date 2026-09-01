@@ -1,5 +1,5 @@
 # Quiet Factory — Runtime State
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 
 This file is the short-lived operational truth for the project.
 
@@ -11,11 +11,11 @@ Do **not** use this file for HEAD-SHA bookkeeping or review certification. Machi
 
 ## Current phase
 
-**Phase 1 — Gray-box MVP milestone (PR #1) + automation validation**
+**Phase 1 — Gray-box MVP milestone (PR #1) + TestFlight distribution readiness**
 
 ## Current objective
 
-Land corrective Kimi cost-discipline + final-review provenance docs on `main`, sync into PR #1, then re-validate the orchestrator chain. Do **not** claim the overall automation chain is validated.
+Make the existing PR #1 app target distributable through the already-merged Internal TestFlight workflow on `main`, without merging PR #1 and without changing gameplay. Recertify the exact-head playtest gate after the packaging push.
 
 Do **not** start new gameplay changes on `main` during this pass.
 
@@ -25,23 +25,44 @@ Do **not** start new gameplay changes on `main` during this pass.
 
 - **PR #1** (`agent/mvp-nightly` → `main`) remains the current **gray-box prototype milestone**.
 - Draft PR: *MVP: Quiet Factory gray-box prototype*.
-- Implementation on that branch includes deterministic `GameCore`, gray-box UI, 13 hand-authored levels, solvability tests, and passing `iOS CI` at last check.
+- Deterministic `GameCore` + `GameEngine` (SpriteKit-independent)
+- Gray-box portrait UI with corrected grid Y-axis (model north = visual up), explicit SpriteKit zPosition layering for crates over grid cells
+- `isStuck` covers empty-conveyor deadlocks via dedicated test fixture
+- 13 hand-authored levels; all verified solvable via test-only `LevelSolver` in CI (plus explicit unsolvable fixture negative test)
+- `onb-3` teaches blocked-path release order (starts `.playing`, blocked crate gives feedback)
+- `hard-1` combines spatial column blocking with interleaved conveyor sequencing
+- Win overlay rests ~1s before auto-advance; stale auto-advance cancelled on restart/level change; stuck overlay copy is location-neutral
+- **P1 pre-playtest fixes (same PR):** board tap hit-testing rejects off-board taps; release presentation trace (slide → land → readable match → clear) with atomic `GameEngine.apply`; unsolvable `LevelSolver` fixture; `QuietFactoryUITests` launch smoke + `GameScene` zPosition unit test
+- `GameEngineTests` + catalog solvability tests + presentation-trace tests
+- **GitHub iOS CI** is authoritative for the exact SHA; local Linux cannot run `xcodebuild`
+- iOS CI publishes a downloadable `QuietFactory-Simulator-<sha>` zip (7-day retention) for Appetize.io browser playtest without a Mac
+
+### TestFlight packaging (same PR, no gameplay change)
+
+- Committed 1024×1024 `AppIcon` asset catalog (neutral gray-box “QF”, RGB, no alpha)
+- `ITSAppUsesNonExemptEncryption = NO` in `QuietFactory/Info.plist` (no non-exempt encryption in the app or dependencies)
+- `generate_xcodeproj.py` updated so regenerating preserves `Assets.xcassets` and `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`
+- The generator still does **not** emit the hand-maintained `QuietFactoryUITests` target; do not run it against the committed project
+- Bundle ID remains `com.quietfactory.app`; marketing version remains `0.1.0`; committed `DEVELOPMENT_TEAM` stays empty (workflow supplies it)
+- TestFlight workflow lives on **`main`** at `.github/workflows/testflight.yml`. Do not modify it from this PR. Do not run the upload unless the owner asks.
 
 ### Automation
 
 | Item | Status |
 |------|--------|
-| `docs/AUTOMATION_PROTOCOL.md` | **Documented** — corrective cost/provenance update in this PR |
-| `.cursor/BUGBOT.md` review rubric | **Documented** |
+| `docs/AUTOMATION_PROTOCOL.md` | **Locked** + CI-handoff correction (workflow-success wake-up) on this PR |
+| `.cursor/BUGBOT.md` review rubric | **Locked** |
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
-| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; cost-disciplined prompt + child-result contract in this PR |
-| `QF — Milestone Orchestrator` | **Configured externally** — **DISABLED** (must stay disabled until this corrective change is merged to `main` and synced into PR #1) |
+| `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; cost-disciplined prompt + child-result contract from PR #7 |
+| `QF — Milestone Orchestrator` | **Configured externally** — **ENABLED** — Draft opened, PR pushed, `ios-ci.yml` Success |
 | `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** |
 
-No additional automation components are planned. Do not enable either Cursor automation as part of this docs pass.
+No additional automation components are planned. The locked two-automation architecture is unchanged.
 
-### Empirical validation — two separate failures
+The packaging push invalidates any prior `QF_PLAYTEST_READY`. The exact-head machine gate still applies even though gameplay did not change.
+
+### Empirical validation — three separate failures
 
 #### 1. Routing/model smoke (cost)
 
@@ -49,7 +70,7 @@ No additional automation components are planned. Do not enable either Cursor aut
 - That attempted final-review run was operationally too expensive, consuming roughly **~2% observed usage**.
 - Treat ~2% as an **observed operational fact**, not an estimated token count.
 - Therefore: **model routing passed**; **reviewer cost discipline is NOT yet validated**.
-- Cost-disciplined prompt/docs in this PR address that defect.
+- Cost-disciplined prompt/docs from PR #7 address that defect.
 
 #### 2. End-to-end orchestrator provenance (PR #1 head `abb46647…`)
 
@@ -61,45 +82,50 @@ No additional automation components are planned. Do not enable either Cursor aut
 - `QF_PLAYTEST_READY` on that SHA is **INVALID / stale for automation-validation purposes**. Do not rewrite or delete the historical GitHub marker merely to hide the failed validation; treat it as invalid/stale for protocol purposes.
 - Human playtest remains **blocked / deferred**.
 
+#### 3. CI wait / no Kimi wake-up (PR #1 head `b7dd80a…`)
+
+- Post-enable candidate `b7dd80a1e6b770105832f1ce054c63ae3c46b5b1` got a Grok run ([bc-af922655](https://cursor.com/agents/bc-af922655-6799-47ab-bb51-b045758bdc21)) that ended in 3m52s after intending to wait for iOS CI.
+- Exact-head `iOS CI` later succeeded (push + PR runs). No `pre-playtest-reviewer` child ran.
+- Root cause: automations with only Draft opened / PR pushed do not resume when CI completes; ending the turn finishes the run.
+- Fix: same orchestrator, additional `ios-ci.yml` Success trigger; protocol forbids subscribe-and-exit.
+
 ### Human playtest
 
-- Human playtest remains **intentionally deferred** until a provenance-backed `QF_PLAYTEST_READY` exists for a fresh exact head after cost-disciplined Kimi validation.
-- Appetize time is scarce (~30 free minutes total); do not consume it for routine validation.
+- Human playtest remains **intentionally deferred** until a provenance-backed `QF_PLAYTEST_READY` exists for the **current** exact PR head.
+- The four machine-detectable P1 items (board hit-testing, release presentation trace, unsolvable solver fixture, UI/smoke tests) are implemented on this PR; they do **not** authorize playtest by themselves.
+- Appetize time is scarce (~30 free minutes total); do not consume it for routine validation or packaging-only checks.
 - A green CI run, Grok PASS, or a parent comment alone does **not** authorize human playtesting.
 - Seeing `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` in a parent comment is **not itself evidence** that the independent reviewer executed.
 
 ## Active scope
 
-- Corrective docs/rules for Kimi cost discipline + fail-closed final-review provenance
-- After merge: sync `main` into PR #1 before any orchestrator re-enable
+- PR #1 TestFlight packaging (icon, export compliance, Xcode/generator parity)
+- Exact-head `iOS CI` + playtest-gate recertification for the new SHA
 - PR #1 remains open as the gray-box milestone (fixes via same PR only)
 
 ## Not active yet
 
 - New gameplay features beyond PR #1 milestone scope
-- Campaign, generator, solver production pipeline, daily puzzle, undo, final art, App Store
+- Merging PR #1
+- Running the TestFlight upload unless the owner asks
+- Campaign, generator, solver production pipeline, daily puzzle, undo, final art, App Store listing
 - Procedural generation (blocked until gray-box loop passes human validation)
-- Re-enabling `QF — Milestone Orchestrator` (blocked until this corrective change is on PR #1)
+- Re-enabling `QF — Next Milestone Starter` (blocked until provenance-backed playtest PASS and human merge of PR #1)
 
 ## Immediate success criterion
 
-Corrective docs merge to `main` → sync into PR #1 → one fresh exact-head chain with observed `pre-playtest-reviewer` child delegation, validated child contract, cost-disciplined prompt in use, and provenance-backed certification — **before** human playtest or enabling `QF — Next Milestone Starter`.
+PR #1 head is archive/sign/upload-ready for the `main` TestFlight workflow, exact-head `iOS CI` is green, and that exact SHA has provenance-backed `QF_PLAYTEST_READY`.
 
 ## Current blockers
 
-- Orchestrator **DISABLED** by design during this corrective pass.
-- Cost discipline not yet validated on a production candidate.
-- Final-review provenance rule not yet validated end-to-end.
-- Stale/invalid `QF_PLAYTEST_READY` on `abb46647…` must not be treated as playtest authorization.
+- Prior `QF_PLAYTEST_READY` markers are **stale** after packaging changes.
+- Human playtest remains blocked until the new exact head is recertified.
+- TestFlight upload is owner-triggered, not part of this pass.
+- Cost discipline / Kimi provenance still not validated end-to-end on a production candidate.
 
 ## Next checkpoint
 
-Required post-merge sequence (do **not** run Kimi during this corrective docs PR):
-
-1. Merge this corrective docs/rules PR into `main`.
-2. Sync/merge latest `main` into PR #1 (`agent/mvp-nightly`). A docs fix on `main` alone does **not** affect PR #1 until synced — the orchestrator reads `.cursor/agents/pre-playtest-reviewer.md` from the candidate PR branch.
-3. Only then re-enable **only** `QF — Milestone Orchestrator`.
-4. Produce one new PR #1 head/push.
-5. Validate the exact-head chain including observed child delegation and provenance.
-6. Keep `QF — Next Milestone Starter` disabled.
-7. Only after provenance-backed `QF_PLAYTEST_READY` may human playtest proceed.
+1. Land packaging on `agent/mvp-nightly` (do not merge).
+2. Wait for exact-head GitHub `iOS CI`.
+3. Recertify the playtest gate for that SHA (orchestrator owns the machine gate).
+4. Owner runs TestFlight with `source_sha` = the certified SHA.

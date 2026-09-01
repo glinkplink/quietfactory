@@ -1,0 +1,59 @@
+import Combine
+import Foundation
+
+/// Observable game session bridging pure model and UI.
+final class GameSession: ObservableObject {
+    @Published private(set) var state: GameState
+    /// Bumped on restart so the scene can force-sync even if an animation flag was left set.
+    @Published private(set) var sceneRevision: Int = 0
+    let level: LevelDefinition
+
+    init(level: LevelDefinition) {
+        self.level = level
+        var initial = level.makeInitialState()
+        GameEngine.evaluateOutcome(&initial)
+        self.state = initial
+    }
+
+    func restart() {
+        var reset = GameEngine.restart(level: level)
+        GameEngine.evaluateOutcome(&reset)
+        state = reset
+        sceneRevision += 1
+    }
+
+    func attemptRelease(crateID: CrateID) -> ReleaseAttemptResult {
+        guard GameEngine.isReleaseValid(crateID: crateID, in: state) else {
+            return .blocked(crateID: crateID)
+        }
+        do {
+            let result = try GameEngine.apply(move: Move(crateID: crateID), to: state)
+            state = result.state
+            return .released(
+                crateID: result.releasedCrateID,
+                clearedColors: result.clearedMatchColors,
+                newStatus: state.status,
+                presentation: ReleasePresentation(
+                    conveyorAfterLanding: result.conveyorAfterLanding,
+                    matchSteps: result.matchSteps
+                )
+            )
+        } catch {
+            return .blocked(crateID: crateID)
+        }
+    }
+
+    var legalMoveIDs: Set<CrateID> {
+        Set(GameEngine.legalMoves(in: state))
+    }
+}
+
+enum ReleaseAttemptResult {
+    case released(
+        crateID: CrateID,
+        clearedColors: [CrateColor],
+        newStatus: GameStatus,
+        presentation: ReleasePresentation
+    )
+    case blocked(crateID: CrateID)
+}

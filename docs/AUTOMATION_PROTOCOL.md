@@ -20,7 +20,8 @@ fresh main
   → implementation-worker fixes if necessary
   → push
   → PR pushed Grok run owns new SHA
-  → exact-head iOS CI
+  → if Grok PASS and iOS CI not yet green: emit QF_GROK + QF_FINAL_GATE: WAITING_CI and **end this run**
+  → ios-ci.yml success starts the **same** orchestrator on that SHA
   → pre-playtest-reviewer (independent final review)
   → QF_PLAYTEST_READY
   → human playtest
@@ -50,13 +51,36 @@ Quiet Factory has **exactly two** top-level Cursor Automations. No other top-lev
 
 | Property | Value |
 |----------|-------|
-| Status | **Configured externally** — **DISABLED** while corrective Kimi cost/provenance docs land and are synced into PR #1 |
+| Status | **Configured externally** — **ENABLED** |
 | Model | Cursor Grok 4.6 High, non-Fast |
 | Repository | `glinkplink/quietfactory` |
-| Triggers | **Draft opened**, **PR pushed** |
+| Triggers | **Draft opened**, **PR pushed**, **Workflow run completed** (`ios-ci.yml`, Success) |
 | Tools | Comment on Pull Request; PR approval disabled |
 
 **Trigger note:** `PR opened` is deliberately **not** used. All gameplay milestones begin as drafts; avoiding `PR opened` prevents redundant Grok runs.
+
+This is still **exactly two** top-level automations. The workflow-success trigger is an additional wake-up on the **same** orchestrator, not a third automation.
+
+**CI handoff (empirical; do not “subscribe and end the turn”):**
+
+Cursor Automations do **not** resume a finished run when GitHub CI later completes. “Subscribe to GitHub CI and end the turn” marks the automation **success** and drops the Kimi gate. Observed on PR #1 head `b7dd80a…` ([bc-af922655](https://cursor.com/agents/bc-af922655-6799-47ab-bb51-b045758bdc21)): Grok PASS path ended at 3m52s; `iOS CI` went green ~8–12 minutes later; no follow-up run invoked `pre-playtest-reviewer`.
+
+Therefore:
+
+1. **Draft opened / PR pushed** — do Grok on the exact current head. If `PASS` and exact-head `iOS CI` (`ios-ci.yml` / `Build and test`) is **not** green yet: post `QF_GROK_*` and the non-certifying marker below, then **stop**. Do not invoke Kimi. Do not poll. Do not subscribe-and-exit as if a later resume will happen.
+2. **Workflow `ios-ci.yml` finished with Success** — this is the Kimi wake-up. If this SHA already has Grok `PASS` and exact-head iOS CI is green, **skip a second Grok review** and invoke `pre-playtest-reviewer` once. If Grok `PASS` does not yet exist for this SHA, do Grok in this run; if that is `PASS` and CI is already green, continue to Kimi in the **same** run.
+3. Treat **only** workflow `ios-ci.yml` / check `Build and test` as iOS CI. The Cursor Automation check is **not** iOS CI (false alarm).
+4. `push` and `pull_request` may both succeed for one SHA. Invoke Kimi **at most once per SHA**. If a **validated child result** already produced `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` for this exact head, **no-op**. `QF_FINAL_GATE: WAITING_CI` is **not** a completed final gate — the CI-success run must still invoke Kimi.
+5. Branch filter is optional in the Cursor UI. **Quiet no-op** unless the SHA is the current HEAD of an **open gameplay/playtest milestone draft PR**. Do not Grok or Kimi `main`, merged PRs, or docs/CI-only branches.
+6. If exact-head iOS CI is **already green** during a PR-pushed run (Grok slower than CI), invoke Kimi in **that** run. The later workflow-success run must then no-op.
+
+Non-certifying wait marker (not playtest authorization):
+
+```
+QF_FINAL_GATE: WAITING_CI
+QF_FINAL_HEAD: <sha>
+REASON: exact-head iOS CI not green yet; Kimi deferred to ios-ci.yml success run
+```
 
 **Responsibilities:**
 
@@ -65,7 +89,7 @@ Quiet Factory has **exactly two** top-level Cursor Automations. No other top-lev
 3. Emit `QF_GROK_HEAD` / `QF_GROK_STATUS`.
 4. Delegate routine fixes to **`implementation-worker`** on the **same PR branch**.
 5. Delegate architecture questions to **`architecture-escalator`** only when required.
-6. Wait for **exact-head** `iOS CI` before final certification.
+6. Do **not** wait for iOS CI by ending the turn. After Grok `PASS`, either invoke Kimi in this run (CI already green) or emit `QF_FINAL_GATE: WAITING_CI` and stop; the `ios-ci.yml` success trigger owns the Kimi wake-up.
 7. **Actually invoke** the named project subagent **`pre-playtest-reviewer`** (Task/subagent delegation) at most **once per eligible candidate SHA**, only after Grok has zero P0/P1 and exact-head CI succeeds — with a supplied **routing pack** (see below). This is a foreground dependency; wait for the child result.
 8. Translate a **validated child result** into `QF_FINAL_HEAD` / `QF_FINAL_STATUS` and, only after child `RESULT: PASS` with proven provenance, `QF_PLAYTEST_READY`. Never self-certify the Kimi gate.
 9. Wait for human `PLAYTEST: PASS` or `PLAYTEST: FAIL`.
@@ -200,7 +224,7 @@ The top-level orchestrator runs on **meaningful PR heads** for gameplay/product 
 - examine architecture, gameplay correctness, UI/model state synchronization, tests, solvability, restart behavior, animation locks, scope drift, and related concerns
 - invoke `implementation-worker` for valid P0/P1 fixes
 - invoke `architecture-escalator` only when required
-- **actually invoke** named `pre-playtest-reviewer` only after Grok PASS + exact-head CI green, with routing pack, and only certify from a validated child result
+- **actually invoke** named `pre-playtest-reviewer` only after Grok PASS + exact-head CI green (on the CI-success run, or in the same run if CI is already green), with routing pack, and only certify from a validated child result. Never wait by ending the turn.
 - post all `QF_*` certification markers in PR comments — never self-certify the Kimi gate
 
 **Review classification:**
@@ -472,6 +496,10 @@ Escalate to the **`architecture-escalator`** project subagent when:
 4. Old Grok and final-review certifications become **stale**
 5. Run the **full gate** again (Grok → CI → pre-playtest-reviewer)
 
+### If final-gate WAITING_CI
+
+Expected after Grok `PASS` when exact-head iOS CI is not green yet. Not an error. The `ios-ci.yml` success run continues the gate.
+
 ### If final-gate ERROR (child result not obtained/validated)
 
 1. Treat as an **automation failure**, not a gameplay P0/P1
@@ -479,6 +507,7 @@ Escalate to the **`architecture-escalator`** project subagent when:
 3. Do **not** emit `QF_FINAL_STATUS: PASS` or `QF_PLAYTEST_READY`
 4. Do **not** ask `implementation-worker` to “fix” invocation/infrastructure failure
 5. Stop for human/operator resolution of the automation defect
+6. Do **not** confuse `WAITING_CI` with `ERROR`
 
 ### Technical disputes
 
@@ -503,8 +532,8 @@ Exact lifecycle for a **gameplay milestone PR**:
 5. Relevant local verification (tests, lint as applicable).
 6. **Orchestrator** reviews full exact head.
 7. If `BLOCKED` (P0/P1) → orchestrator invokes `implementation-worker` → push → **PR pushed** retriggers orchestrator from step 6.
-8. When Grok `PASS` → wait for **exact-head** `iOS CI`.
-9. When CI green → orchestrator **actually invokes** `pre-playtest-reviewer` once for that head with a routing pack, waits for the child result, and validates the child contract.
+8. When Grok `PASS` and exact-head `iOS CI` is not green: emit `QF_GROK_*` plus `QF_FINAL_GATE: WAITING_CI` and **end this run** (do not subscribe-and-exit).
+9. When `ios-ci.yml` succeeds on that exact head (or when Grok `PASS` and CI are both already true in one run) → orchestrator **actually invokes** `pre-playtest-reviewer` once for that head with a routing pack, waits for the child result, and validates the child contract. Duplicate success events for the same SHA are a no-op.
 10. If child `RESULT: BLOCKED` → orchestrator invokes `implementation-worker` → push → restart from step 6. If child result missing/invalid → emit `QF_FINAL_GATE: ERROR` and stop (do not self-certify).
 11. When orchestrator posts provenance-backed `QF_PLAYTEST_READY` for the exact SHA, that exact artifact may be used for human playtesting.
 12. Human records one of:
@@ -521,6 +550,7 @@ Exact lifecycle for a **gameplay milestone PR**:
 | Green CI alone | **No** |
 | Grok PASS alone | **No** |
 | Green CI + Grok PASS without proven `pre-playtest-reviewer` child result | **No** |
+| `QF_FINAL_GATE: WAITING_CI` | **No** |
 | Parent comment claiming final PASS without validated child contract | **No** |
 | Final review PASS against a stale SHA | **No** |
 | `QF_PLAYTEST_READY` for the **exact artifact SHA** with proven child PASS provenance | **Yes** |
@@ -565,7 +595,7 @@ makes those certifications **stale**.
 The new head must pass the appropriate gates again:
 
 ```
-new push → Milestone Orchestrator → CI → (if gameplay milestone) pre-playtest-reviewer → QF_PLAYTEST_READY
+new push → Milestone Orchestrator (Grok) → WAITING_CI if needed → ios-ci.yml success → pre-playtest-reviewer → QF_PLAYTEST_READY
 ```
 
 Do **not** resume human playtesting on a stale artifact.
@@ -603,11 +633,11 @@ After merge of the docs-lock PR, treat this document as **LOCKED** unless empiri
 
 | Component | Status |
 |-----------|--------|
-| This protocol document | **Documented** — locked after docs-lock merge; corrective cost/provenance update in progress |
+| This protocol document | **Documented** — locked after docs-lock merge; CI-handoff correction (workflow-success wake-up) in this revision |
 | `architecture-escalator` project subagent | **Documented** |
 | `implementation-worker` project subagent | **Documented** |
 | `pre-playtest-reviewer` project subagent | **Documented** — bound to `kimi-k3-high`; routing/model smoke observed; cost discipline and end-to-end provenance **not** validated |
-| `QF — Milestone Orchestrator` | **Configured externally** — **DISABLED** pending merge+sync of this corrective docs change into PR #1 |
+| `QF — Milestone Orchestrator` | **Configured externally** — **ENABLED** — triggers: Draft opened, PR pushed, `ios-ci.yml` Success |
 | `QF — Next Milestone Starter` | **Configured externally** — **DISABLED** pending validation |
 | Bot-comment automation chaining | **Abandoned** — unsuitable with current Cursor Automation UI |
 | Separate review-fixer / final-reviewer top-level automations | **Abandoned** — orchestrator owns full gate |
