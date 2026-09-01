@@ -29,11 +29,12 @@ jobs:
           echo "=== macOS ==="
           sw_vers
           echo "=== Xcode ==="
-          xcodebuild -version
+          xcode_version_output="$(xcodebuild -version)"
+          printf '%s\n' "${xcode_version_output}"
           echo "=== Developer directory ==="
           xcode-select -p
 
-          xcode_line=$(xcodebuild -version | awk '/^Xcode / { print $2; exit }')
+          xcode_line="$(printf '%s\n' "${xcode_version_output}" | awk '/^Xcode / { print $2 }')"
           major="${xcode_line%%.*}"
           if ! [[ "${major}" =~ ^[0-9]+$ ]]; then
             echo "::error::Could not parse Xcode version from '${xcode_line}'."
