@@ -1,5 +1,5 @@
 # Quiet Factory — Next Actions
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 
 This file is intentionally tactical. Keep only the next meaningful work here.
 
@@ -7,50 +7,41 @@ Workflow details: `docs/AUTOMATION_PROTOCOL.md`.
 
 ---
 
-## P0 — Re-validate orchestrator chain after CI-handoff patch
+## P0 — PR #1 TestFlight packaging, then recertify exact head
+
+Do **not** merge PR #1. Do **not** open a replacement gameplay PR. Do **not** modify `.github/workflows/testflight.yml` on this PR.
 
 `QF — Milestone Orchestrator` is **ENABLED** (Draft opened, PR pushed, `ios-ci.yml` Success). `QF — Next Milestone Starter` remains **DISABLED**.
 
 Seeing `QF_FINAL_STATUS` or `QF_PLAYTEST_READY` in a parent comment is **not itself evidence** that the independent reviewer executed. `QF_FINAL_GATE: WAITING_CI` is not playtest authorization.
 
-**P1 machine-detectable fixes** (board hit-testing, release presentation trace, unsolvable solver fixture, UI/smoke tests) are implemented on the same PR. Human playtest remains gated on provenance-backed `QF_PLAYTEST_READY`.
+Gameplay did **not** change for this packaging pass. The exact-head machine gate still applies because the PR HEAD moves.
 
 Complete in this order:
 
-1. **Merge corrective docs/rules PR #7** into `main` — **done** (`bf302ad`).
-2. **Sync latest `main` into PR #1** (`agent/mvp-nightly`) — **done** (`b74d386`).
-3. **Enable only `QF — Milestone Orchestrator`** — **done**.
-4. **Add `ios-ci.yml` Success trigger** on that same automation — **done** (leave branch optional).
-5. **Push CI-handoff protocol patch** — **this commit**.
-6. **Verify exact-head Grok PASS** and `QF_FINAL_GATE: WAITING_CI` (Grok must **not** subscribe-and-exit).
-7. **Verify exact-head iOS CI** green for that SHA.
-8. **Observe a second orchestrator run** on `ios-ci.yml` success that **actually invokes** `pre-playtest-reviewer` (named Task/subagent — not parent self-review).
-9. **Verify returned child contract:**
-   - `REVIEWER_ROLE: pre-playtest-reviewer`
-   - `REVIEWED_HEAD` matches candidate
-   - `ROUTING_OK: true`
-   - required review sections present
-   - `RESULT` exactly `PASS` or `BLOCKED`
-10. **Only after that child result** may `QF_FINAL_STATUS` appear; only after actual child `PASS` may `QF_PLAYTEST_READY` appear.
-11. **Confirm the cost-disciplined prompt is used** and inspect Kimi usage after that one run (observed usage only — no invented token counts).
-12. **Confirm Automation MCP/tool config** remains Comment on PR only (checkbox only — do not rebuild).
-13. **Only then** human Appetize playtest (P1).
-14. Keep **Next Milestone Starter disabled**.
+1. **Land packaging on `agent/mvp-nightly`:** AppIcon catalog, export-compliance plist key, Xcode project + `generate_xcodeproj.py` parity. No gameplay changes.
+2. **Wait for exact-head GitHub `iOS CI`** on the new PR #1 SHA. Inspect and fix real failures; do not suppress or weaken CI.
+3. **Recertify the playtest gate** for that exact SHA (`QF_GROK_*` → CI green → `pre-playtest-reviewer` → `QF_PLAYTEST_READY`). Any prior `QF_PLAYTEST_READY` is stale.
+4. **Owner runs Internal TestFlight** (not the implementation agent unless explicitly asked):
+   - GitHub → Actions → TestFlight → Run workflow
+   - `source_sha` = the exact `QF_PLAYTEST_READY` SHA
+5. Keep PR #1 open. Apple processing may take several minutes after upload.
+6. Keep **Next Milestone Starter disabled**.
 
-Treat any prior `QF_PLAYTEST_READY` for `abb46647…` as **invalid**. Treat the `b7dd80a…` run as **CI-handoff failure** (no Kimi), not as a validated chain.
+Treat any prior `QF_PLAYTEST_READY` for an older SHA as **invalid**.
 
-Do not claim automation is validated until steps 6–11 pass with provenance.
+Do not claim automation is validated until the new head has provenance-backed `QF_PLAYTEST_READY`.
 
 ---
 
-## P1 — After automation is validated
+## P1 — After TestFlight build is available and playtest gate is green
 
 ### Human playtest gray-box MVP (PR #1)
 
 Only when PR #1 head has provenance-backed `QF_PLAYTEST_READY` for that exact SHA:
 
 - Define a predefined human question before opening Appetize (see `docs/AUTOMATION_PROTOCOL.md` § E).
-- **Without a Mac:** download `QuietFactory-Simulator-<sha>` from the green iOS CI run on GitHub Actions, upload the zip to [Appetize.io](https://appetize.io), and play in the browser
+- **Without a Mac:** download `QuietFactory-Simulator-<sha>` from the green iOS CI run on GitHub Actions, upload the zip to [Appetize.io](https://appetize.io), and play in the browser — **or** install from Internal TestFlight
 - **With Xcode:** run on iPhone simulator or device from `agent/mvp-nightly`
 - Walk onboarding levels `onb-*` through difficult `hard-*`
 - On `onb-3`: tap blocked crate first, then release blocker, then finish
@@ -88,7 +79,7 @@ Only when PR #1 head has provenance-backed `QF_PLAYTEST_READY` for that exact SH
 
 ## Agent rule
 
-An implementation agent should not jump ahead into P2/P3 gameplay work while P0 validation remains incomplete.
+An implementation agent should not jump ahead into P2/P3 gameplay work while PR #1 is still the open gray-box milestone.
 
 The prototype gate and playtest gate are intentional.
 

@@ -76,6 +76,9 @@ for path in test_sources:
 
 info_plist_ref = uid("ref_info_plist")
 info_plist_build = uid("build_info_plist")
+assets_path = f"{PROJECT_NAME}/Assets.xcassets"
+assets_ref = uid(f"ref_{assets_path}")
+assets_build = uid(f"build_{assets_path}")
 
 lines = []
 lines.append("// !$*UTF8*$!")
@@ -90,6 +93,7 @@ for path, build_id in build_files_app.items():
     lines.append(f"		{build_id} /* {os.path.basename(path)} in Sources */ = {{isa = PBXBuildFile; fileRef = {file_refs[path]} /* {os.path.basename(path)} */; }};")
 for path, build_id in build_files_test.items():
     lines.append(f"		{build_id} /* {os.path.basename(path)} in Sources */ = {{isa = PBXBuildFile; fileRef = {file_refs[path]} /* {os.path.basename(path)} */; }};")
+lines.append(f"		{assets_build} /* Assets.xcassets in Resources */ = {{isa = PBXBuildFile; fileRef = {assets_ref} /* Assets.xcassets */; }};")
 
 # PBXContainerItemProxy
 lines.append(f"		{container_proxy_id} /* PBXContainerItemProxy */ = {{isa = PBXContainerItemProxy; containerPortal = {project_id} /* Project object */; proxyType = 1; remoteGlobalIDString = {app_target_id}; remoteInfo = {PROJECT_NAME}; }};")
@@ -98,6 +102,7 @@ lines.append(f"		{container_proxy_id} /* PBXContainerItemProxy */ = {{isa = PBXC
 lines.append(f"		{app_product_id} /* {PROJECT_NAME}.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = {PROJECT_NAME}.app; sourceTree = BUILT_PRODUCTS_DIR; }};")
 lines.append(f"		{test_product_id} /* {PROJECT_NAME}Tests.xctest */ = {{isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = {PROJECT_NAME}Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; }};")
 lines.append(f"		{info_plist_ref} /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = \"<group>\"; }};")
+lines.append(f"		{assets_ref} /* Assets.xcassets */ = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = \"<group>\"; }};")
 for path, ref_id in file_refs.items():
     lines.append(f"		{ref_id} /* {os.path.basename(path)} */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = {os.path.basename(path)}; sourceTree = \"<group>\"; }};")
 
@@ -124,6 +129,7 @@ for folder in ["App", "GameCore", "GameScene", "Audio"]:
 
 app_children = [f"{subgroup_ids[f]} /* {f} */" for f in ["App", "GameCore", "GameScene", "Audio"]]
 app_children.append(f"{info_plist_ref} /* Info.plist */")
+app_children.append(f"{assets_ref} /* Assets.xcassets */")
 lines.append(f"		{app_group_id} /* {PROJECT_NAME} */ = {{isa = PBXGroup; children = ({', '.join(app_children)}, ); path = {PROJECT_NAME}; sourceTree = \"<group>\"; }};")
 
 test_children = []
@@ -141,7 +147,7 @@ lines.append(f"		{test_target_id} /* {PROJECT_NAME}Tests */ = {{isa = PBXNativeT
 lines.append(f"		{project_id} /* Project object */ = {{isa = PBXProject; attributes = {{LastSwiftUpdateCheck = 1500; LastUpgradeCheck = 1500; TargetAttributes = {{{test_target_id} = {{CreatedOnToolsVersion = 15.0; TestTargetID = {app_target_id}; }}; }}; }}; buildConfigurationList = {project_config_list_id} /* Build configuration list for PBXProject \"{PROJECT_NAME}\" */; compatibilityVersion = \"Xcode 14.0\"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base, ); mainGroup = {main_group_id}; productRefGroup = {products_group_id} /* Products */; projectDirPath = \"\"; projectRoot = \"\"; targets = ({app_target_id} /* {PROJECT_NAME} */, {test_target_id} /* {PROJECT_NAME}Tests */, ); }};")
 
 # PBXResourcesBuildPhase
-lines.append(f"		{app_resources_phase_id} /* Resources */ = {{isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; }};")
+lines.append(f"		{app_resources_phase_id} /* Resources */ = {{isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ({assets_build} /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; }};")
 
 # PBXSourcesBuildPhase
 app_source_entries = [f"{build_files_app[p]} /* {os.path.basename(p)} in Sources */" for p in app_sources]
@@ -193,6 +199,7 @@ lines.append(f"		{debug_config_id} /* Debug */ = {{isa = XCBuildConfiguration; b
 lines.append(f"		{release_config_id} /* Release */ = {{isa = XCBuildConfiguration; buildSettings = {{{common_release.format(ios=IOS_DEPLOYMENT)}}}; name = Release; }};")
 
 app_settings_debug = textwrap.dedent(f"""
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
