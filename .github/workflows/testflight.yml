@@ -213,7 +213,7 @@ jobs:
           if man xcodebuild >/dev/null 2>&1; then
             echo "=== man xcodebuild (export-related) ==="
             man xcodebuild | col -b >> "${docs_file}"
-            grep -i -E 'exportOptions|app-store|destination|signingStyle|manageAppVersion|teamID' "${docs_file}" | head -120 || true
+            grep -i -E 'exportOptions|app-store|destination|signingStyle|manageAppVersion|teamID|testFlightInternalTestingOnly' "${docs_file}" | head -120 || true
           fi
 
           method="app-store-connect"
@@ -234,7 +234,20 @@ jobs:
             fi
           done
 
-          echo "EXPORT_METHOD=${method}" >> "${GITHUB_ENV}"
+          # Xcode 15+ documents this key. This workflow already requires Xcode 26+,
+          # and it is named Internal TestFlight, so enable it when documented.
+          testflight_internal="false"
+          if grep -Fqi 'testFlightInternalTestingOnly' "${docs_file}"; then
+            testflight_internal="true"
+            echo "Enabling ExportOptions testFlightInternalTestingOnly=true (documented by this Xcode)."
+          else
+            echo "Leaving testFlightInternalTestingOnly unset; xcodebuild -help/man did not document it."
+          fi
+
+          {
+            echo "EXPORT_METHOD=${method}"
+            echo "EXPORT_TESTFLIGHT_INTERNAL=${testflight_internal}"
+          } >> "${GITHUB_ENV}"
 
       - name: Archive Release for iOS device
         id: archive
@@ -242,6 +255,14 @@ jobs:
           set -euo pipefail
           echo "Archiving QuietFactory Release for generic/platform=iOS"
           echo "CURRENT_PROJECT_VERSION=${GITHUB_RUN_NUMBER}"
+          echo "Signing identity: Apple Distribution (App Store Connect / TestFlight)"
+          echo "This archive must not request an iOS App Development profile or registered devices."
+          # The QuietFactory project at source_sha leaves CODE_SIGN_IDENTITY unset.
+          # Xcode then defaults to Apple Development, which asks Apple for an
+          # iOS App Development profile and fails when the team has no devices.
+          # App Store Connect / TestFlight distribution profiles do not include
+          # a device list. Override identity only for this Release archive;
+          # Debug/development signing in the checked-out project is unchanged.
           xcodebuild \
             -project QuietFactory.xcodeproj \
             -scheme QuietFactory \
@@ -249,6 +270,8 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath "${ARCHIVE_PATH}" \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            "CODE_SIGN_IDENTITY[sdk=iphoneos*]=Apple Distribution" \
             DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
             CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
             -allowProvisioningUpdates \
@@ -278,8 +301,12 @@ jobs:
               "teamID": os.environ["APPLE_TEAM_ID"],
               "manageAppVersionAndBuildNumber": False,
           }
+          if os.environ.get("EXPORT_TESTFLIGHT_INTERNAL") == "true":
+              data["testFlightInternalTestingOnly"] = True
           with open(path, "wb") as handle:
               plistlib.dump(data, handle)
+          print("ExportOptions method={method} destination={destination} signingStyle={signingStyle}".format(**data))
+          print("ExportOptions testFlightInternalTestingOnly={}".format(data.get("testFlightInternalTestingOnly", False)))
           PY
 
           mkdir -p "${EXPORT_PATH}"
