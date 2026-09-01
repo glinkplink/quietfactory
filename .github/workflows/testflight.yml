@@ -1,0 +1,328 @@
+name: Internal TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Quiet Factory commit SHA to build and upload to Internal TestFlight
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  testflight:
+    name: Archive and upload to Internal TestFlight
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+
+    steps:
+      - name: Print toolchain
+        run: |
+          set -euo pipefail
+          echo "=== macOS ==="
+          sw_vers
+          echo "=== Xcode ==="
+          xcodebuild -version
+          echo "=== Developer directory ==="
+          xcode-select -p
+
+          xcode_line=$(xcodebuild -version | awk '/^Xcode / { print $2; exit }')
+          major="${xcode_line%%.*}"
+          if ! [[ "${major}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Could not parse Xcode version from '${xcode_line}'."
+            exit 1
+          fi
+          if [[ "${major}" -lt 26 ]]; then
+            echo "::error::Xcode major version is ${major} (${xcode_line}); Quiet Factory TestFlight requires Xcode 26 or newer."
+            exit 1
+          fi
+          echo "Xcode ${xcode_line} meets the major-version >= 26 requirement."
+
+      - name: Validate secrets and materialize API key
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          missing=0
+          if [[ -z "$(printf '%s' "${APPLE_TEAM_ID:-}" | tr -d '[:space:]')" ]]; then
+            echo "::error::Repository secret APPLE_TEAM_ID is missing or empty."
+            missing=1
+          fi
+          if [[ -z "$(printf '%s' "${ASC_KEY_ID:-}" | tr -d '[:space:]')" ]]; then
+            echo "::error::Repository secret ASC_KEY_ID is missing or empty."
+            missing=1
+          fi
+          if [[ -z "$(printf '%s' "${ASC_ISSUER_ID:-}" | tr -d '[:space:]')" ]]; then
+            echo "::error::Repository secret ASC_ISSUER_ID is missing or empty."
+            missing=1
+          fi
+          if [[ -z "$(printf '%s' "${ASC_PRIVATE_KEY:-}" | tr -d '[:space:]')" ]]; then
+            echo "::error::Repository secret ASC_PRIVATE_KEY is missing or empty."
+            missing=1
+          fi
+          if [[ "${missing}" -ne 0 ]]; then
+            echo "::error::All of APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, and ASC_PRIVATE_KEY must be non-empty."
+            exit 1
+          fi
+
+          key_path="${RUNNER_TEMP}/AuthKey_${ASC_KEY_ID}.p8"
+          umask 077
+          printf '%s\n' "${ASC_PRIVATE_KEY}" > "${key_path}"
+          chmod 600 "${key_path}"
+          if ! grep -Eq 'BEGIN .*PRIVATE KEY' "${key_path}"; then
+            echo "::error::ASC_PRIVATE_KEY does not look like a PEM private key (missing BEGIN PRIVATE KEY header)."
+            rm -f "${key_path}"
+            exit 1
+          fi
+
+          {
+            echo "KEY_PATH=${key_path}"
+            echo "ARCHIVE_PATH=${RUNNER_TEMP}/QuietFactory.xcarchive"
+            echo "EXPORT_PATH=${RUNNER_TEMP}/QuietFactoryExport"
+            echo "EXPORT_OPTIONS_PATH=${RUNNER_TEMP}/ExportOptions.plist"
+          } >> "${GITHUB_ENV}"
+
+      - name: Validate source_sha format
+        run: |
+          set -euo pipefail
+          requested=$(printf '%s' "${SOURCE_SHA}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+          if ! [[ "${requested}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::source_sha must be the full 40-character Quiet Factory commit SHA. Got: '${SOURCE_SHA}'."
+            exit 1
+          fi
+
+      - name: Checkout requested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+
+      - name: Verify checked-out SHA
+        run: |
+          set -euo pipefail
+          requested=$(printf '%s' "${SOURCE_SHA}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+          actual=$(git rev-parse HEAD)
+          echo "Requested source SHA: ${requested}"
+          echo "Checked-out git SHA: ${actual}"
+          if [[ "${actual}" != "${requested}" ]]; then
+            echo "::error::Checked-out SHA ${actual} does not exactly equal source_sha (${SOURCE_SHA}). Pass the full 40-character commit SHA."
+            exit 1
+          fi
+          echo "CHECKED_OUT_SHA=${actual}" >> "${GITHUB_ENV}"
+
+      - name: Verify QuietFactory.xcodeproj exists
+        run: |
+          set -euo pipefail
+          if [[ ! -d QuietFactory.xcodeproj ]]; then
+            echo "::error::QuietFactory.xcodeproj is missing at the requested SHA ${CHECKED_OUT_SHA}. This workflow does not regenerate the Xcode project."
+            ls -la
+            exit 1
+          fi
+          echo "Found QuietFactory.xcodeproj"
+
+      - name: Verify shared QuietFactory scheme exists
+        run: |
+          set -euo pipefail
+          scheme_file="QuietFactory.xcodeproj/xcshareddata/xcschemes/QuietFactory.xcscheme"
+          if [[ ! -f "${scheme_file}" ]]; then
+            echo "::error::Shared scheme QuietFactory is missing at ${scheme_file}."
+            echo "Project listing:"
+            xcodebuild -list -project QuietFactory.xcodeproj || true
+            exit 1
+          fi
+          echo "Found ${scheme_file}"
+
+      - name: Read bundle ID and marketing version
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          proc = subprocess.run(
+              [
+                  "xcodebuild",
+                  "-project", "QuietFactory.xcodeproj",
+                  "-scheme", "QuietFactory",
+                  "-configuration", "Release",
+                  "-showBuildSettings",
+                  "-json",
+                  "CODE_SIGNING_ALLOWED=NO",
+              ],
+              capture_output=True,
+              text=True,
+          )
+          text = (proc.stdout or "") + (proc.stderr or "")
+          start = text.find("[")
+          if proc.returncode != 0 or start == -1:
+              print("::error::xcodebuild -showBuildSettings -json failed.")
+              print(text)
+              sys.exit(1)
+
+          entries = json.loads(text[start:])
+          chosen = None
+          for entry in entries:
+              if entry.get("target") == "QuietFactory":
+                  chosen = entry
+                  break
+          if chosen is None and entries:
+              chosen = entries[0]
+          if chosen is None:
+              print("::error::xcodebuild returned no build settings.")
+              sys.exit(1)
+
+          settings = chosen.get("buildSettings") or {}
+          bundle_id = (settings.get("PRODUCT_BUNDLE_IDENTIFIER") or "").strip()
+          marketing_version = (settings.get("MARKETING_VERSION") or "").strip()
+          if not bundle_id:
+              print("::error::Could not read PRODUCT_BUNDLE_IDENTIFIER from QuietFactory Release build settings.")
+              sys.exit(1)
+          if not marketing_version:
+              print("::error::Could not read MARKETING_VERSION from QuietFactory Release build settings.")
+              sys.exit(1)
+
+          print(f"Bundle ID: {bundle_id}")
+          print(f"Marketing version: {marketing_version}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"BUNDLE_ID={bundle_id}\n")
+              handle.write(f"MARKETING_VERSION={marketing_version}\n")
+          PY
+
+      - name: Inspect xcodebuild export options
+        run: |
+          set -euo pipefail
+          help_file="${RUNNER_TEMP}/xcodebuild-help.txt"
+          docs_file="${RUNNER_TEMP}/xcodebuild-docs.txt"
+          echo "=== xcodebuild -help ==="
+          xcodebuild -help > "${help_file}" 2>&1 || true
+          cat "${help_file}"
+          cp "${help_file}" "${docs_file}"
+
+          if man xcodebuild >/dev/null 2>&1; then
+            echo "=== man xcodebuild (export-related) ==="
+            man xcodebuild | col -b >> "${docs_file}"
+            grep -i -E 'exportOptions|app-store|destination|signingStyle|manageAppVersion|teamID' "${docs_file}" | head -120 || true
+          fi
+
+          method="app-store-connect"
+          if grep -Fqi 'app-store-connect' "${docs_file}"; then
+            echo "Confirmed export method: app-store-connect"
+          elif grep -Eiq 'method[[:space:]].*app-store' "${docs_file}"; then
+            method="app-store"
+            echo "xcodebuild documents method app-store; using that instead of app-store-connect."
+          else
+            echo "xcodebuild -help/man did not enumerate export methods; using documented Xcode 16+ method app-store-connect."
+          fi
+
+          for key in destination signingStyle teamID manageAppVersionAndBuildNumber; do
+            if grep -Fqi "${key}" "${docs_file}"; then
+              echo "Confirmed export option key: ${key}"
+            else
+              echo "Note: ${key} is not mentioned in xcodebuild -help/man; still emitting the documented Xcode 16+ key."
+            fi
+          done
+
+          echo "EXPORT_METHOD=${method}" >> "${GITHUB_ENV}"
+
+      - name: Archive Release for iOS device
+        id: archive
+        run: |
+          set -euo pipefail
+          echo "Archiving QuietFactory Release for generic/platform=iOS"
+          echo "CURRENT_PROJECT_VERSION=${GITHUB_RUN_NUMBER}"
+          xcodebuild \
+            -project QuietFactory.xcodeproj \
+            -scheme QuietFactory \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "${ARCHIVE_PATH}" \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${KEY_PATH}" \
+            -authenticationKeyID "${ASC_KEY_ID}" \
+            -authenticationKeyIssuerID "${ASC_ISSUER_ID}" \
+            archive
+          if [[ ! -d "${ARCHIVE_PATH}" ]]; then
+            echo "::error::xcodebuild archive reported success but ${ARCHIVE_PATH} was not created."
+            exit 1
+          fi
+          echo "Archive succeeded."
+
+      - name: Export and upload to App Store Connect
+        id: export
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import plistlib
+
+          path = os.environ["EXPORT_OPTIONS_PATH"]
+          data = {
+              "method": os.environ["EXPORT_METHOD"],
+              "destination": "upload",
+              "signingStyle": "automatic",
+              "teamID": os.environ["APPLE_TEAM_ID"],
+              "manageAppVersionAndBuildNumber": False,
+          }
+          with open(path, "wb") as handle:
+              plistlib.dump(data, handle)
+          PY
+
+          mkdir -p "${EXPORT_PATH}"
+          echo "Exporting archive with destination=upload (App Store Connect / TestFlight)."
+          xcodebuild \
+            -exportArchive \
+            -archivePath "${ARCHIVE_PATH}" \
+            -exportOptionsPlist "${EXPORT_OPTIONS_PATH}" \
+            -exportPath "${EXPORT_PATH}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${KEY_PATH}" \
+            -authenticationKeyID "${ASC_KEY_ID}" \
+            -authenticationKeyIssuerID "${ASC_ISSUER_ID}"
+          echo "App Store Connect upload succeeded."
+
+      - name: Write success summary
+        run: |
+          set -euo pipefail
+          {
+            echo "## Internal TestFlight upload"
+            echo
+            echo "- Requested source SHA: \`${SOURCE_SHA}\`"
+            echo "- Actual checked-out SHA: \`${CHECKED_OUT_SHA}\`"
+            echo "- Bundle ID: \`${BUNDLE_ID}\`"
+            echo "- Marketing version: \`${MARKETING_VERSION}\`"
+            echo "- TestFlight build number: \`${GITHUB_RUN_NUMBER}\`"
+            echo "- Archive succeeded"
+            echo "- App Store Connect upload succeeded"
+            echo "- Apple processing may take several minutes before the build appears in Internal TestFlight"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Cloud signing failure hint
+        if: failure() && (steps.archive.outcome == 'failure' || steps.export.outcome == 'failure')
+        run: |
+          set -euo pipefail
+          echo "::error::Quiet Factory TestFlight uses Apple automatic/cloud-managed signing only. Inspect the exact xcodebuild / App Store Connect error above (API-key role, certificate, or provisioning permissions). This workflow does not fall back to ad-hoc signing, local .p12 certificates, or committed profiles."
+
+      - name: Remove App Store Connect API key
+        if: always()
+        run: |
+          set -euo pipefail
+          if [[ -n "${KEY_PATH:-}" && -f "${KEY_PATH}" ]]; then
+            rm -f "${KEY_PATH}"
+          fi
+          rm -f "${RUNNER_TEMP}/AuthKey_"*.p8
+          if [[ -n "${EXPORT_OPTIONS_PATH:-}" && -f "${EXPORT_OPTIONS_PATH}" ]]; then
+            rm -f "${EXPORT_OPTIONS_PATH}"
+          fi
