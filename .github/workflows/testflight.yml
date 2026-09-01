@@ -169,7 +169,8 @@ jobs:
               print(text)
               sys.exit(1)
 
-          entries = json.loads(text[start:])
+          decoder = json.JSONDecoder()
+          entries, _ = decoder.raw_decode(text[start:])
           chosen = None
           for entry in entries:
               if entry.get("target") == "QuietFactory":
