@@ -220,7 +220,7 @@ app_settings_debug = textwrap.dedent(f"""
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1";
 """).strip()
 
 app_settings_release = app_settings_debug
