@@ -249,39 +249,130 @@ jobs:
             echo "EXPORT_TESTFLIGHT_INTERNAL=${testflight_internal}"
           } >> "${GITHUB_ENV}"
 
+      - name: Print resolved Release signing settings
+        run: |
+          set -euo pipefail
+          echo "Resolved QuietFactory Release settings for the unsigned archive invocation."
+          echo "These are diagnostic only. Secrets are not printed."
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          keys = [
+              "CODE_SIGN_STYLE",
+              "CODE_SIGN_IDENTITY",
+              "CODE_SIGNING_ALLOWED",
+              "CODE_SIGNING_REQUIRED",
+              "DEVELOPMENT_TEAM",
+              "PRODUCT_BUNDLE_IDENTIFIER",
+              "PROVISIONING_PROFILE",
+              "PROVISIONING_PROFILE_SPECIFIER",
+              "CODE_SIGN_ENTITLEMENTS",
+          ]
+          proc = subprocess.run(
+              [
+                  "xcodebuild",
+                  "-project", "QuietFactory.xcodeproj",
+                  "-scheme", "QuietFactory",
+                  "-configuration", "Release",
+                  "-destination", "generic/platform=iOS",
+                  "-showBuildSettings",
+                  "-json",
+                  "CODE_SIGNING_ALLOWED=NO",
+                  "CODE_SIGNING_REQUIRED=NO",
+                  "CURRENT_PROJECT_VERSION={}".format(os.environ["GITHUB_RUN_NUMBER"]),
+              ],
+              capture_output=True,
+              text=True,
+          )
+          text = (proc.stdout or "") + (proc.stderr or "")
+          start = text.find("[")
+          if proc.returncode != 0 or start == -1:
+              print("::error::xcodebuild -showBuildSettings -json failed.")
+              print(text)
+              sys.exit(1)
+
+          decoder = json.JSONDecoder()
+          entries, _ = decoder.raw_decode(text[start:])
+          chosen = None
+          for entry in entries:
+              if entry.get("target") == "QuietFactory":
+                  chosen = entry
+                  break
+          if chosen is None and entries:
+              chosen = entries[0]
+          if chosen is None:
+              print("::error::xcodebuild returned no build settings.")
+              sys.exit(1)
+
+          settings = chosen.get("buildSettings") or {}
+          team_secret = (os.environ.get("APPLE_TEAM_ID") or "").strip()
+          print("=== Resolved QuietFactory Release signing settings ===")
+          for key in keys:
+              value = settings.get(key)
+              if value is None or value == "":
+                  rendered = "<empty>"
+              else:
+                  rendered = str(value)
+                  if team_secret and rendered == team_secret:
+                      rendered = "<redacted>"
+              print(f"{key}={rendered}")
+          PY
+
       - name: Archive Release for iOS device
         id: archive
         run: |
           set -euo pipefail
           echo "Archiving QuietFactory Release for generic/platform=iOS"
           echo "CURRENT_PROJECT_VERSION=${GITHUB_RUN_NUMBER}"
-          echo "Signing identity: Apple Distribution (App Store Connect / TestFlight)"
-          echo "This archive must not request an iOS App Development profile or registered devices."
-          # The QuietFactory project at source_sha leaves CODE_SIGN_IDENTITY unset.
-          # Xcode then defaults to Apple Development, which asks Apple for an
-          # iOS App Development profile and fails when the team has no devices.
-          # App Store Connect / TestFlight distribution profiles do not include
-          # a device list. Override identity only for this Release archive;
-          # Debug/development signing in the checked-out project is unchanged.
+          echo "Archive signing: disabled (CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)."
+          echo "Distribution signing happens later at -exportArchive, not during archive."
+          echo "This archive must not request an iOS App Development profile, a registered device, or a CODE_SIGN_IDENTITY override."
+          # Automatic signing during archive asks Apple for an iOS App Development
+          # profile. Those profiles are device-bound, so a team with no iPhone
+          # cannot generate one. Passing CODE_SIGN_IDENTITY while
+          # CODE_SIGN_STYLE=Automatic is also a conflict (Xcode 26.6 run
+          # 33559033212). Archive without signing; App Store Connect / TestFlight
+          # distribution signing is applied at export.
           xcodebuild \
             -project QuietFactory.xcodeproj \
             -scheme QuietFactory \
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "${ARCHIVE_PATH}" \
-            CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            "CODE_SIGN_IDENTITY[sdk=iphoneos*]=Apple Distribution" \
-            DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
             CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "${KEY_PATH}" \
-            -authenticationKeyID "${ASC_KEY_ID}" \
-            -authenticationKeyIssuerID "${ASC_ISSUER_ID}" \
             archive
           if [[ ! -d "${ARCHIVE_PATH}" ]]; then
             echo "::error::xcodebuild archive reported success but ${ARCHIVE_PATH} was not created."
             exit 1
+          fi
+          app_path="${ARCHIVE_PATH}/Products/Applications/QuietFactory.app"
+          if [[ ! -d "${app_path}" ]]; then
+            echo "::error::Archive is missing Products/Applications/QuietFactory.app"
+            echo "Archive listing:"
+            ls -la "${ARCHIVE_PATH}" || true
+            ls -la "${ARCHIVE_PATH}/Products" || true
+            ls -la "${ARCHIVE_PATH}/Products/Applications" || true
+            exit 1
+          fi
+          echo "Archive contains Products/Applications/QuietFactory.app"
+          echo "=== codesign --display (unsigned is expected at this stage) ==="
+          codesign_status=0
+          codesign_output="$(codesign --display --verbose=2 "${app_path}" 2>&1)" || codesign_status=$?
+          printf '%s\n' "${codesign_output}"
+          if [[ "${codesign_status}" -eq 0 ]]; then
+            echo "Archive app currently has a code signature."
+          else
+            echo "Archive app is unsigned (expected: archive disables signing; export applies App Store Connect distribution signing)."
+          fi
+          if [[ -d "${app_path}/_CodeSignature" ]]; then
+            echo "Archive app has a _CodeSignature directory."
+          else
+            echo "Archive app has no _CodeSignature directory."
           fi
           echo "Archive succeeded."
 
@@ -290,8 +381,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
+          import io
           import os
           import plistlib
+          import sys
 
           path = os.environ["EXPORT_OPTIONS_PATH"]
           data = {
@@ -307,10 +400,19 @@ jobs:
               plistlib.dump(data, handle)
           print("ExportOptions method={method} destination={destination} signingStyle={signingStyle}".format(**data))
           print("ExportOptions testFlightInternalTestingOnly={}".format(data.get("testFlightInternalTestingOnly", False)))
+
+          redacted = dict(data)
+          if "teamID" in redacted:
+              redacted["teamID"] = "<redacted>"
+          buf = io.BytesIO()
+          plistlib.dump(redacted, buf, fmt=plistlib.FMT_XML)
+          print("=== ExportOptions.plist (teamID redacted) ===")
+          sys.stdout.write(buf.getvalue().decode("utf-8"))
           PY
 
           mkdir -p "${EXPORT_PATH}"
           echo "Exporting archive with destination=upload (App Store Connect / TestFlight)."
+          echo "Export signing: automatic cloud-managed App Store distribution via App Store Connect API key."
           xcodebuild \
             -exportArchive \
             -archivePath "${ARCHIVE_PATH}" \
@@ -342,7 +444,7 @@ jobs:
         if: failure() && (steps.archive.outcome == 'failure' || steps.export.outcome == 'failure')
         run: |
           set -euo pipefail
-          echo "::error::Quiet Factory TestFlight uses Apple automatic/cloud-managed signing only. Inspect the exact xcodebuild / App Store Connect error above (API-key role, certificate, or provisioning permissions). This workflow does not fall back to ad-hoc signing, local .p12 certificates, or committed profiles."
+          echo "::error::Quiet Factory TestFlight archives without code signing, then applies Apple automatic/cloud-managed App Store Connect distribution signing at -exportArchive. Inspect the exact xcodebuild / App Store Connect error above (archive product missing, API-key role, distribution certificate, or provisioning permissions). This workflow does not fall back to Development signing, device/UDID registration, ad-hoc signing, local .p12 certificates, or committed profiles."
 
       - name: Remove App Store Connect API key
         if: always()
